@@ -20,6 +20,24 @@ router.use(
 
 router.use(express.json())
 
+// Control Plane Rate Limiting: 120 reqs / min per IP
+router.use(async (req, res, next) => {
+  const ip = req.ip || req.socket.remoteAddress || '127.0.0.1'
+  const key = `rate:control:${ip}`
+  try {
+    const current = await redis.incr(key)
+    if (current === 1) {
+      await redis.expire(key, 60)
+    }
+    if (current > 120) {
+      return res.status(429).json({ error: 'Control plane rate limit exceeded' })
+    }
+  } catch (e) {
+    // Fail open if Redis is temporarily unreachable
+  }
+  next()
+})
+
 // Operator Auth Guard (if CONTROL_TOKEN is set in environment)
 router.use((req, res, next) => {
   const token = process.env.CONTROL_TOKEN
@@ -251,7 +269,9 @@ router.post('/routes', async (req, res) => {
 // ---------------------------------------------------------------------------
 // API Keys (Single-view Secret Key Generation & Instant Revocation)
 // ---------------------------------------------------------------------------
-router.get('/api-keys', async (_req, res) => {
+router.get('/api-keys', async (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 50, 100)
+  const offset = Math.max(Number(req.query.offset) || 0, 0)
   try {
     const q = `
       SELECT k.id, k."keyPrefix", k."keyHash", k.status, k."organizationId", k."lastUsedAt", k."expiresAt", k."createdAt", k."updatedAt",
@@ -259,8 +279,9 @@ router.get('/api-keys', async (_req, res) => {
       FROM "ApiKey" k
       JOIN "Organization" o ON k."organizationId" = o.id
       ORDER BY k."createdAt" DESC
+      LIMIT $1 OFFSET $2
     `
-    const r = await pool.query(q)
+    const r = await pool.query(q, [limit, offset])
     res.json(r.rows)
   } catch (err) {
     res.status(500).json({ error: 'Failed to list API keys' })
@@ -362,7 +383,9 @@ router.post('/api-keys/:identifier/revoke', async (req, res) => {
 // ---------------------------------------------------------------------------
 // Audit Events
 // ---------------------------------------------------------------------------
-router.get('/audit-events', async (_req, res) => {
+router.get('/audit-events', async (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 50, 200)
+  const offset = Math.max(Number(req.query.offset) || 0, 0)
   try {
     const q = `
       SELECT a.id, a."organizationId", a.actor, a.action, a."targetType", a."targetId", a.metadata, a."createdAt",
@@ -370,9 +393,9 @@ router.get('/audit-events', async (_req, res) => {
       FROM "AuditEvent" a
       LEFT JOIN "Organization" o ON a."organizationId" = o.id
       ORDER BY a."createdAt" DESC
-      LIMIT 100
+      LIMIT $1 OFFSET $2
     `
-    const r = await pool.query(q)
+    const r = await pool.query(q, [limit, offset])
     res.json(r.rows)
   } catch (err) {
     res.status(500).json({ error: 'Failed to list audit events' })
