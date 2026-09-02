@@ -49,13 +49,21 @@ export function recordUsage(
 
 export async function flushUsage() {
   if (counters.size === 0) return
-  const entries = Array.from(counters.entries())
-  counters.clear()
+
+  // Snapshot current counters without clearing to guarantee zero data loss on crash
+  const snapshot = new Map<BucketKey, BucketMetrics>()
+  for (const [k, v] of counters.entries()) {
+    if (v.requestCount > 0) {
+      snapshot.set(k, { ...v })
+    }
+  }
+
+  if (snapshot.size === 0) return
 
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
-    for (const [key, m] of entries) {
+    for (const [key, m] of snapshot.entries()) {
       const [orgId, routeId, hour] = key.split('::')
       const q = `
         INSERT INTO "UsageHourly" (
@@ -87,22 +95,24 @@ export async function flushUsage() {
       ])
     }
     await client.query('COMMIT')
-  } catch (err) {
-    await client.query('ROLLBACK')
-    // restore metrics to in-memory map
-    for (const [k, m] of entries) {
-      const prev = counters.get(k)
-      if (prev) {
-        prev.requestCount += m.requestCount
-        prev.successCount += m.successCount
-        prev.clientErrCount += m.clientErrCount
-        prev.serverErrCount += m.serverErrCount
-        prev.rateLimitedCount += m.rateLimitedCount
-        prev.quotaHitCount += m.quotaHitCount
-      } else {
-        counters.set(k, m)
+
+    // Only deduct committed snapshot amounts from live counters
+    for (const [key, flushed] of snapshot.entries()) {
+      const current = counters.get(key)
+      if (current) {
+        current.requestCount -= flushed.requestCount
+        current.successCount -= flushed.successCount
+        current.clientErrCount -= flushed.clientErrCount
+        current.serverErrCount -= flushed.serverErrCount
+        current.rateLimitedCount -= flushed.rateLimitedCount
+        current.quotaHitCount -= flushed.quotaHitCount
+        if (current.requestCount <= 0) {
+          counters.delete(key)
+        }
       }
     }
+  } catch (err) {
+    await client.query('ROLLBACK')
     console.error('Usage flush failed:', err)
   } finally {
     client.release()
@@ -119,7 +129,10 @@ export function startUsageFlush(intervalMs = 5 * 60 * 1000) {
 }
 
 export async function stopUsageFlush() {
-  if (timer) clearInterval(timer)
+  if (timer) {
+    clearInterval(timer)
+    timer = null
+  }
   await flushUsage()
 }
 

@@ -1,6 +1,5 @@
--- Placeholder atomic monthly quota Lua script for Redis
--- TODO: implement atomic monthly increment + check
 -- atomicQuota.lua
+-- Atomic monthly quota check and increment for Redis
 -- KEYS[1] = key (e.g., quota:<org>:YYYY-MM)
 -- ARGV[1] = increment (1)
 -- ARGV[2] = limit (monthly quota, -1 for unlimited)
@@ -26,7 +25,7 @@ if next > limit then
 end
 
 redis.call('INCRBY', key, inc)
--- set expiry to 35 days to cover month
+-- set expiry to 35 days to safely cover month boundary
 redis.call('PEXPIRE', key, 35 * 24 * 60 * 60 * 1000)
 
 return {1, next}

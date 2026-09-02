@@ -54,7 +54,11 @@ router.use((req, res, next) => {
 })
 
 function getActor(req: express.Request): string {
-  return (req.headers['x-actor'] as string) || (req.headers['X-Actor'] as string) || 'admin_operator'
+  const custom = (req.headers['x-actor'] as string) || (req.headers['X-Actor'] as string)
+  if (custom && /^[a-zA-Z0-9_.-]{3,64}$/.test(custom)) {
+    return `operator:${custom}`
+  }
+  return 'operator:control_token_admin'
 }
 
 // ---------------------------------------------------------------------------

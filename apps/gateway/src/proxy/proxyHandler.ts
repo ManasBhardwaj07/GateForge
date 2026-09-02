@@ -4,11 +4,16 @@ import { validateTargetUrl } from '../lib/ssrf.js'
 import usage from '../lib/usage.js'
 
 const proxyCache = new Map<string, RequestHandler>()
+const MAX_PROXY_ENTRIES = 100
 
 export function getOrCreateProxy(target: string, timeout = 30000): RequestHandler {
   const cacheKey = `${target}::${timeout}`
   let proxy = proxyCache.get(cacheKey)
   if (!proxy) {
+    if (proxyCache.size >= MAX_PROXY_ENTRIES) {
+      const oldestKey = proxyCache.keys().next().value
+      if (oldestKey) proxyCache.delete(oldestKey)
+    }
     proxy = createProxyMiddleware({
       target,
       changeOrigin: true,
