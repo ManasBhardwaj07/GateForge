@@ -14,6 +14,9 @@ let routesCache: CachedRoute[] = []
 let lastLoad = 0
 
 export function matchesRoutePrefix(reqPath: string, routePrefix: string): boolean {
+  if (!routePrefix) return false
+  if (routePrefix === '/') return true
+
   // Normalize by stripping trailing slashes for clean boundary matching
   const p = reqPath.endsWith('/') && reqPath.length > 1 ? reqPath.slice(0, -1) : reqPath
   const prefix = routePrefix.endsWith('/') && routePrefix.length > 1 ? routePrefix.slice(0, -1) : routePrefix

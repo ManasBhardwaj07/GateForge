@@ -53,11 +53,8 @@ router.use((req, res, next) => {
   next()
 })
 
-function getActor(req: express.Request): string {
-  const custom = (req.headers['x-actor'] as string) || (req.headers['X-Actor'] as string)
-  if (custom && /^[a-zA-Z0-9_.-]{3,64}$/.test(custom)) {
-    return `operator:${custom}`
-  }
+function getActor(_req: express.Request): string {
+  // Bound server-side to verified operator token; untrusted client headers are ignored
   return 'operator:control_token_admin'
 }
 

@@ -55,9 +55,14 @@ export async function evalScript(name: string, numKeys: number, ...args: string[
     scriptsContent[name] = content
   }
 
-  sha = await client.script('load', content)
-  scripts[name] = sha
-  return await client.evalsha(sha, numKeys, ...args)
+  try {
+    sha = await client.script('load', content)
+    scripts[name] = sha
+    return await client.evalsha(sha, numKeys, ...args)
+  } catch (_e) {
+    // If SCRIPT LOAD or EVALSHA fails, execute via raw EVAL directly
+    return await client.eval(content, numKeys, ...args)
+  }
 }
 
 export default client
