@@ -8,7 +8,9 @@
   ],
   "scripts": {
     "bootstrap": "npm install",
+    "dev": "cd apps/dashboard && npm run dev",
     "dev:docker": "docker-compose up --build",
+    "start": "cd apps/dashboard && npm run start",
     "start:gateway": "cd apps/gateway && npm run dev",
     "start:dashboard": "cd apps/dashboard && npm run dev",
     "start:mock-orders": "cd apps/mock-orders && npm run dev",

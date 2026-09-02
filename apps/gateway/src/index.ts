@@ -1,4 +1,5 @@
 import express from 'express'
+import cors from 'cors'
 import { requestId } from './middleware/requestId.js'
 import { apiKeyAuth } from './middleware/apiKeyAuth.js'
 import { routeMatcher } from './middleware/routeMatcher.js'
@@ -13,13 +14,23 @@ import control from './controlPlane.js'
 const app = express()
 const PORT = process.env.PORT || 4000
 
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  credentials: true,
+  exposedHeaders: ['X-Request-Id', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset', 'X-Quota-Limit', 'X-Quota-Used']
+}))
+
 app.use(requestId)
 app.use(express.json())
 
 // health
 app.get('/health', async (_req, res) => {
-  const ping = await redis.ping()
-  res.json({ status: 'ok', redis: ping })
+  try {
+    const ping = await redis.ping()
+    res.json({ status: 'ok', redis: ping })
+  } catch (err) {
+    res.status(500).json({ status: 'error', error: 'Redis unreachable' })
+  }
 })
 
 // load Lua scripts

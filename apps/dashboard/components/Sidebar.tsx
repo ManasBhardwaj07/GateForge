@@ -19,7 +19,7 @@ const navItems = [
   { name: 'API Keys', href: '/api-keys', icon: KeyRound },
   { name: 'Routes & Upstreams', href: '/routes', icon: Network },
   { name: 'Tenants & Plans', href: '/organizations', icon: Building2 },
-  { name: 'Traffic Playground', href: '/playground', icon: Zap, badge: 'v2.1' },
+  { name: 'Traffic Playground', href: '/playground', icon: Zap },
   { name: 'Audit Logs', href: '/audit', icon: FileText },
 ]
 
@@ -70,25 +70,15 @@ export function Sidebar() {
                 <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-indigo-400' : 'text-slate-400 group-hover:text-slate-200'}`} />
                 <span>{item.name}</span>
               </div>
-              {item.badge && (
-                <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-md">
-                  {item.badge}
-                </span>
-              )}
             </Link>
           )
         })}
       </div>
 
       {/* System Telemetry Indicator Footer */}
-      <div className="p-4 border-t border-slate-800/80 bg-slate-900/30">
-        <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
-          <span className="flex items-center space-x-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span>Gateway :4000</span>
-          </span>
-          <span className="text-slate-500 text-[11px]">v2.1-FINAL</span>
-        </div>
+      <div className="p-4 border-t border-slate-800/80 bg-slate-900/30 flex items-center space-x-2 text-xs text-slate-400 font-mono">
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span className="text-slate-300">Gateway Port :4000</span>
       </div>
     </aside>
   )

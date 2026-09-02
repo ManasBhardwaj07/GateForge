@@ -1,6 +1,6 @@
 const CONTROL_API_BASE = process.env.NEXT_PUBLIC_CONTROL_API || 'http://localhost:4001/control'
 const GATEWAY_BASE = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:4000'
-const CONTROL_TOKEN = process.env.NEXT_PUBLIC_CONTROL_TOKEN || ''
+const CONTROL_TOKEN = process.env.NEXT_PUBLIC_CONTROL_TOKEN || 'dev_operator_secret_token_123'
 
 function getHeaders(extra: Record<string, string> = {}): Record<string, string> {
   const headers: Record<string, string> = {
