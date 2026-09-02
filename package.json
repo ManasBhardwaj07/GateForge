@@ -10,9 +10,15 @@
     "bootstrap": "npm install",
     "dev:docker": "docker-compose up --build",
     "start:gateway": "cd apps/gateway && npm run dev",
+    "start:dashboard": "cd apps/dashboard && npm run dev",
     "start:mock-orders": "cd apps/mock-orders && npm run dev",
     "start:mock-payments": "cd apps/mock-payments && npm run dev",
+    "build:dashboard": "cd apps/dashboard && npm run build",
     "prisma:generate": "cd packages/db && npm run prisma:generate"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
