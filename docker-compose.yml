@@ -37,6 +37,7 @@ services:
     command: npm run dev
     ports:
       - '4000:4000'
+      - '4001:4001'
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gateforge_dev
       REDIS_URL: redis://redis:6379
