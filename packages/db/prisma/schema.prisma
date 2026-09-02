@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  planId    String
+  plan      Plan     @relation(fields: [planId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  apiKeys     ApiKey[]
+  usageHourly UsageHourly[]
+  auditEvents AuditEvent[]
+}
+
+model Plan {
+  id                 String   @id @default(cuid())
+  name               String   @unique
+  rateLimitPerMinute Int
+  quotaPerMonth      Int
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  organizations  Organization[]
+  routeOverrides Route[]        @relation("PlanRouteOverride")
+}
+
+model ApiKey {
+  id             String       @id @default(cuid())
+  keyHash        String       @unique
+  keyPrefix      String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  status         ApiKeyStatus @default(ACTIVE)
+  lastUsedAt     DateTime?
+  expiresAt      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([keyHash])
+  @@index([organizationId])
+}
+
+enum ApiKeyStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+model Route {
+  id             String    @id @default(cuid())
+  slug           String    @unique
+  pathPrefix     String
+  upstreamId     String
+  upstream       Upstream  @relation(fields: [upstreamId], references: [id])
+  timeoutMs      Int       @default(30000)
+  planOverrideId String?
+  planOverride   Plan?     @relation("PlanRouteOverride", fields: [planOverrideId], references: [id])
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  usageHourly UsageHourly[]
+}
+
+model Upstream {
+  id        String   @id @default(cuid())
+  name      String
+  baseUrl   String
+  timeoutMs Int      @default(30000)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  routes Route[]
+}
+
+model UsageHourly {
+  id               String       @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id])
+  routeId          String
+  route            Route        @relation(fields: [routeId], references: [id])
+  hourBucket       DateTime
+  requestCount     Int          @default(0)
+  successCount     Int          @default(0)
+  clientErrCount   Int          @default(0)
+  serverErrCount   Int          @default(0)
+  rateLimitedCount Int          @default(0)
+  quotaHitCount    Int          @default(0)
+
+  @@unique([organizationId, routeId, hourBucket])
+  @@index([organizationId])
+  @@index([hourBucket])
+}
+
+model AuditEvent {
+  id             String        @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  actor          String
+  action         String
+  targetType     String
+  targetId       String
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+
+  @@index([organizationId])
+  @@index([createdAt])
+}

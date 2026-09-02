@@ -1,0 +1,51 @@
+version: '3.9'
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gateforge_dev
+    ports:
+      - '5433:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+
+  mock-orders:
+    build: ./apps/mock-orders
+    command: npm run dev
+    ports:
+      - '5001:5001'
+    depends_on:
+      - redis
+
+  mock-payments:
+    build: ./apps/mock-payments
+    command: npm run dev
+    ports:
+      - '5002:5002'
+    depends_on:
+      - redis
+
+  gateway:
+    build: ./apps/gateway
+    command: npm run dev
+    ports:
+      - '4000:4000'
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gateforge_dev
+      REDIS_URL: redis://redis:6379
+      ALLOW_PRIVATE_UPSTREAMS: '1'
+    depends_on:
+      - mock-orders
+      - mock-payments
+      - redis
+      - postgres
+
+volumes:
+  pgdata:

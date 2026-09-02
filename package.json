@@ -1,0 +1,23 @@
+{
+  "name": "gateforge",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "bootstrap": "npm install",
+    "dev:docker": "docker-compose up --build",
+    "start:gateway": "cd apps/gateway && npm run dev",
+    "start:mock-orders": "cd apps/mock-orders && npm run dev",
+    "start:mock-payments": "cd apps/mock-payments && npm run dev",
+    "prisma:generate": "cd packages/db && npm run prisma:generate"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/http-proxy-middleware": "^0.19.3",
+    "@types/node": "^26.4.1",
+    "@types/pg": "^8.23.1"
+  }
+}
