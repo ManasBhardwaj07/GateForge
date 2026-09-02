@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
 import crypto from 'crypto'
-import redis, { getScriptSha } from '../lib/redis.js'
+import redis, { evalScript } from '../lib/redis.js'
 
 export async function rateLimiter(req: Request, res: Response, next: NextFunction) {
   const policy = (req as any).policy
@@ -17,11 +17,10 @@ export async function rateLimiter(req: Request, res: Response, next: NextFunctio
   const key = `rate:${orgId}:${routeConfig.id}`
 
   try {
-    const sha = getScriptSha('slidingWindow.lua')
     const now = Date.now().toString()
     const reqId = (req as any).id || (req.headers['x-request-id'] as string) || crypto.randomUUID()
     
-    const resArr = await redis.evalsha(sha, 1, key, now, windowMs.toString(), limit.toString(), reqId)
+    const resArr = await evalScript('slidingWindow.lua', 1, key, now, windowMs.toString(), limit.toString(), reqId)
     const allowed = resArr[0]
     const remaining = resArr[1]
 

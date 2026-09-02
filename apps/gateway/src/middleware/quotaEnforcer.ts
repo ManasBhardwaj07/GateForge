@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express'
-import redis, { getScriptSha } from '../lib/redis.js'
+import redis, { evalScript } from '../lib/redis.js'
 
 export async function quotaEnforcer(req: Request, res: Response, next: NextFunction) {
   const policy = (req as any).policy
@@ -11,8 +11,7 @@ export async function quotaEnforcer(req: Request, res: Response, next: NextFunct
   const key = `quota:${auth.organization.id}:${bucket}`
 
   try {
-    const sha = getScriptSha('atomicQuota.lua')
-    const resArr = await redis.evalsha(sha, 1, key, '1', quota.toString())
+    const resArr = await evalScript('atomicQuota.lua', 1, key, '1', quota.toString())
     const allowed = resArr[0]
     const value = resArr[1]
     res.setHeader('X-Quota-Limit', quota.toString())

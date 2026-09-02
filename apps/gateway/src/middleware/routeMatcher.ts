@@ -13,6 +13,15 @@ export interface CachedRoute {
 let routesCache: CachedRoute[] = []
 let lastLoad = 0
 
+export function matchesRoutePrefix(reqPath: string, routePrefix: string): boolean {
+  // Normalize by stripping trailing slashes for clean boundary matching
+  const p = reqPath.endsWith('/') && reqPath.length > 1 ? reqPath.slice(0, -1) : reqPath
+  const prefix = routePrefix.endsWith('/') && routePrefix.length > 1 ? routePrefix.slice(0, -1) : routePrefix
+
+  // Exact match or sub-path with boundary delimiter ('/')
+  return p === prefix || p.startsWith(prefix + '/')
+}
+
 export async function loadRoutes() {
   const q = `
     SELECT r.id, r.slug, r."pathPrefix", r."upstreamId", r."timeoutMs",
@@ -53,7 +62,7 @@ export async function routeMatcher(req: Request, res: Response, next: NextFuncti
     const path = req.path
     let best: CachedRoute | null = null
     for (const r of routesCache) {
-      if (path.startsWith(r.pathPrefix)) {
+      if (matchesRoutePrefix(path, r.pathPrefix)) {
         if (!best || r.pathPrefix.length > best.pathPrefix.length) {
           best = r
         }
