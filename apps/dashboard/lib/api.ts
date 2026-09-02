@@ -1,5 +1,17 @@
 const CONTROL_API_BASE = process.env.NEXT_PUBLIC_CONTROL_API || 'http://localhost:4001/control'
 const GATEWAY_BASE = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:4000'
+const CONTROL_TOKEN = process.env.NEXT_PUBLIC_CONTROL_TOKEN || ''
+
+function getHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  const headers: Record<string, string> = {
+    'x-actor': 'dashboard_operator',
+    ...extra,
+  }
+  if (CONTROL_TOKEN) {
+    headers['Authorization'] = `Bearer ${CONTROL_TOKEN}`
+  }
+  return headers
+}
 
 export interface Organization {
   id: string
@@ -122,7 +134,7 @@ export async function fetchHealth(): Promise<HealthStatus> {
 }
 
 export async function fetchOrganizations(): Promise<Organization[]> {
-  const r = await fetch(`${CONTROL_API_BASE}/organizations`, { cache: 'no-store' })
+  const r = await fetch(`${CONTROL_API_BASE}/organizations`, { headers: getHeaders(), cache: 'no-store' })
   if (!r.ok) throw new Error('Failed to fetch organizations')
   return r.json()
 }
@@ -130,7 +142,7 @@ export async function fetchOrganizations(): Promise<Organization[]> {
 export async function createOrganization(data: { name: string; slug: string; planId: string }): Promise<Organization> {
   const r = await fetch(`${CONTROL_API_BASE}/organizations`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(data),
   })
   if (!r.ok) {
@@ -141,7 +153,7 @@ export async function createOrganization(data: { name: string; slug: string; pla
 }
 
 export async function fetchPlans(): Promise<Plan[]> {
-  const r = await fetch(`${CONTROL_API_BASE}/plans`, { cache: 'no-store' })
+  const r = await fetch(`${CONTROL_API_BASE}/plans`, { headers: getHeaders(), cache: 'no-store' })
   if (!r.ok) throw new Error('Failed to fetch plans')
   return r.json()
 }
@@ -149,7 +161,7 @@ export async function fetchPlans(): Promise<Plan[]> {
 export async function createPlan(data: { name: string; rateLimitPerMinute: number; quotaPerMonth: number }): Promise<Plan> {
   const r = await fetch(`${CONTROL_API_BASE}/plans`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(data),
   })
   if (!r.ok) {
@@ -160,7 +172,7 @@ export async function createPlan(data: { name: string; rateLimitPerMinute: numbe
 }
 
 export async function fetchApiKeys(): Promise<ApiKey[]> {
-  const r = await fetch(`${CONTROL_API_BASE}/api-keys`, { cache: 'no-store' })
+  const r = await fetch(`${CONTROL_API_BASE}/api-keys`, { headers: getHeaders(), cache: 'no-store' })
   if (!r.ok) throw new Error('Failed to fetch API keys')
   return r.json()
 }
@@ -168,7 +180,7 @@ export async function fetchApiKeys(): Promise<ApiKey[]> {
 export async function createApiKey(organizationId: string, expiresAt?: string | null): Promise<ApiKey> {
   const r = await fetch(`${CONTROL_API_BASE}/api-keys`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ organizationId, expiresAt }),
   })
   if (!r.ok) {
@@ -181,6 +193,7 @@ export async function createApiKey(organizationId: string, expiresAt?: string | 
 export async function revokeApiKey(identifier: string): Promise<ApiKey> {
   const r = await fetch(`${CONTROL_API_BASE}/api-keys/${identifier}/revoke`, {
     method: 'POST',
+    headers: getHeaders(),
   })
   if (!r.ok) {
     const err = await r.json().catch(() => ({}))
@@ -190,7 +203,7 @@ export async function revokeApiKey(identifier: string): Promise<ApiKey> {
 }
 
 export async function fetchUpstreams(): Promise<Upstream[]> {
-  const r = await fetch(`${CONTROL_API_BASE}/upstreams`, { cache: 'no-store' })
+  const r = await fetch(`${CONTROL_API_BASE}/upstreams`, { headers: getHeaders(), cache: 'no-store' })
   if (!r.ok) throw new Error('Failed to fetch upstreams')
   return r.json()
 }
@@ -198,7 +211,7 @@ export async function fetchUpstreams(): Promise<Upstream[]> {
 export async function createUpstream(data: { name: string; baseUrl: string; timeoutMs?: number }): Promise<Upstream> {
   const r = await fetch(`${CONTROL_API_BASE}/upstreams`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(data),
   })
   if (!r.ok) {
@@ -209,7 +222,7 @@ export async function createUpstream(data: { name: string; baseUrl: string; time
 }
 
 export async function fetchRoutes(): Promise<RouteItem[]> {
-  const r = await fetch(`${CONTROL_API_BASE}/routes`, { cache: 'no-store' })
+  const r = await fetch(`${CONTROL_API_BASE}/routes`, { headers: getHeaders(), cache: 'no-store' })
   if (!r.ok) throw new Error('Failed to fetch routes')
   return r.json()
 }
@@ -223,7 +236,7 @@ export async function createRoute(data: {
 }): Promise<RouteItem> {
   const r = await fetch(`${CONTROL_API_BASE}/routes`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(data),
   })
   if (!r.ok) {
@@ -234,7 +247,7 @@ export async function createRoute(data: {
 }
 
 export async function fetchAuditEvents(): Promise<AuditEvent[]> {
-  const r = await fetch(`${CONTROL_API_BASE}/audit-events`, { cache: 'no-store' })
+  const r = await fetch(`${CONTROL_API_BASE}/audit-events`, { headers: getHeaders(), cache: 'no-store' })
   if (!r.ok) throw new Error('Failed to fetch audit events')
   return r.json()
 }

@@ -1,4 +1,5 @@
 import express from 'express'
+import cors from 'cors'
 import crypto from 'crypto'
 import pool from './lib/db.js'
 import redis from './lib/redis.js'
@@ -6,7 +7,35 @@ import { recordAudit } from './lib/audit.js'
 import { validateTargetUrl } from './lib/ssrf.js'
 
 const router = express.Router()
+
+// CORS configuration allowing Next.js Dashboard
+router.use(
+  cors({
+    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-actor', 'X-Actor'],
+  })
+)
+
 router.use(express.json())
+
+// Operator Auth Guard (if CONTROL_TOKEN is set in environment)
+router.use((req, res, next) => {
+  const token = process.env.CONTROL_TOKEN
+  if (token) {
+    const authHeader = (req.headers['authorization'] || '') as string
+    const bearer = authHeader.replace(/^Bearer\s+/i, '').trim()
+    if (!bearer || bearer !== token) {
+      return res.status(401).json({ error: 'Unauthorized: Invalid or missing operator token' })
+    }
+  }
+  next()
+})
+
+function getActor(req: express.Request): string {
+  return (req.headers['x-actor'] as string) || (req.headers['X-Actor'] as string) || 'admin_operator'
+}
 
 // ---------------------------------------------------------------------------
 // Organizations
@@ -48,6 +77,7 @@ router.post('/organizations', async (req, res) => {
     const org = r.rows[0]
 
     await recordAudit({
+      actor: getActor(req),
       organizationId: org.id,
       action: 'organization.create',
       targetType: 'Organization',
@@ -92,6 +122,7 @@ router.post('/plans', async (req, res) => {
     const plan = r.rows[0]
 
     await recordAudit({
+      actor: getActor(req),
       action: 'plan.create',
       targetType: 'Plan',
       targetId: plan.id,
@@ -142,6 +173,7 @@ router.post('/upstreams', async (req, res) => {
     const upstream = r.rows[0]
 
     await recordAudit({
+      actor: getActor(req),
       action: 'upstream.create',
       targetType: 'Upstream',
       targetId: upstream.id,
@@ -200,6 +232,7 @@ router.post('/routes', async (req, res) => {
     const route = r.rows[0]
 
     await recordAudit({
+      actor: getActor(req),
       action: 'route.create',
       targetType: 'Route',
       targetId: route.id,
@@ -260,6 +293,7 @@ router.post('/api-keys', async (req, res) => {
     const keyRecord = r.rows[0]
 
     await recordAudit({
+      actor: getActor(req),
       organizationId,
       action: 'key.created',
       targetType: 'ApiKey',
@@ -307,6 +341,7 @@ router.post('/api-keys/:identifier/revoke', async (req, res) => {
     }
 
     await recordAudit({
+      actor: getActor(req),
       organizationId: revokedKey.organizationId,
       action: 'key.revoked',
       targetType: 'ApiKey',
