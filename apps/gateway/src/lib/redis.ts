@@ -4,7 +4,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 // Prefer service hostname 'redis' in containerized environments; allow override via REDIS_URL
-const redisUrl = process.env.REDIS_URL || 'redis://redis:6379'
+const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:56111'
 // ioredis exports a constructor compatible with runtime; cast to any to satisfy TypeScript
 const client = new (Redis as any)(redisUrl)
 

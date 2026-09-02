@@ -1,7 +1,7 @@
 import { Client } from 'pg'
 import { randomUUID, createHash } from 'crypto'
 
-const dbUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5433/gateforge_dev'
+const dbUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/gateforge_dev'
 
 async function main() {
   const client = new Client({ connectionString: dbUrl })

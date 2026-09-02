@@ -6,7 +6,7 @@ import { routeMatcher } from './middleware/routeMatcher.js'
 import { policyResolver } from './middleware/policyResolver.js'
 import { rateLimiter } from './middleware/rateLimiter.js'
 import { quotaEnforcer } from './middleware/quotaEnforcer.js'
-import { createUpstreamProxy } from './proxy/proxyHandler.js'
+import { proxyMiddlewareHandler } from './proxy/proxyHandler.js'
 import redis, { loadScripts } from './lib/redis.js'
 import usage from './lib/usage.js'
 import control from './controlPlane.js'
@@ -21,9 +21,8 @@ app.use(cors({
 }))
 
 app.use(requestId)
-app.use(express.json())
 
-// health
+// health (no body parsing needed)
 app.get('/health', async (_req, res) => {
   try {
     const ping = await redis.ping()
@@ -53,10 +52,7 @@ app.use(rateLimiter)
 app.use(quotaEnforcer)
 
 // dynamic proxy to upstream determined by routeMatcher
-app.use((req, res, next) => {
-  const provider = (r: any) => (r as any).routeConfig.upstream
-  return createUpstreamProxy(provider, (req as any).routeConfig?.timeoutMs || 2000)(req, res, next)
-})
+app.use(proxyMiddlewareHandler)
 
 app.use((err: any, _req: any, res: any, _next: any) => {
   console.error('unhandled', err)

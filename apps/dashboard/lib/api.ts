@@ -251,3 +251,4 @@ export async function fetchAuditEvents(): Promise<AuditEvent[]> {
   if (!r.ok) throw new Error('Failed to fetch audit events')
   return r.json()
 }
+

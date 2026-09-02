@@ -1,6 +1,6 @@
 import { Pool } from 'pg'
 
-const dbUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5433/gateforge_dev'
+const dbUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/gateforge_dev'
 
 export const pool = new Pool({
   connectionString: dbUrl,

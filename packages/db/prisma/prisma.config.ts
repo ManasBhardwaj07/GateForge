@@ -2,6 +2,6 @@
 export default {
   datasource: {
     provider: 'postgresql',
-    url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5433/gateforge_dev',
+    url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/gateforge_dev',
   },
 }

@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from 'express'
 import redis, { getScriptSha } from '../lib/redis.js'
-import { format } from 'date-fns'
 
 export async function quotaEnforcer(req: Request, res: Response, next: NextFunction) {
   const policy = (req as any).policy
@@ -8,7 +7,7 @@ export async function quotaEnforcer(req: Request, res: Response, next: NextFunct
   if (!policy || !auth) return res.status(500).json({ error: 'missing policy or auth' })
 
   const quota = policy.quotaPerMonth
-  const bucket = format(new Date(), 'yyyy-MM')
+  const bucket = new Date().toISOString().slice(0, 7)
   const key = `quota:${auth.organization.id}:${bucket}`
 
   try {

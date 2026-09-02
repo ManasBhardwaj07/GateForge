@@ -1,7 +1,6 @@
 import pool from './db.js'
-import { format } from 'date-fns'
 
-type BucketKey = string // orgId:routeId:yyyy-MM-ddTHH:00:00Z
+type BucketKey = string // orgId::routeId::yyyy-MM-ddTHH:00:00.000Z
 
 interface BucketMetrics {
   requestCount: number
@@ -15,7 +14,7 @@ interface BucketMetrics {
 const counters: Map<BucketKey, BucketMetrics> = new Map()
 
 function getHourBucket(): string {
-  return format(new Date(), "yyyy-MM-dd'T'HH:00:00.000'Z'")
+  return new Date().toISOString().slice(0, 13) + ':00:00.000Z'
 }
 
 function makeKey(orgId: string, routeId: string, hour: string): BucketKey {

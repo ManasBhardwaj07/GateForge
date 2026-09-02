@@ -1,21 +1,22 @@
--- Placeholder sliding window Lua script for Redis
--- Keys/args convention to be defined in gateway implementation
--- Should perform atomic check and return { allowed = 1/0, remaining }
 -- slidingWindow.lua
--- KEYS[1] = key (e.g., rate:<hash>:window)
--- ARGV[1] = now (ms)
+-- KEYS[1] = key (e.g., rate:<orgId>:<routeId>)
+-- ARGV[1] = now (ms timestamp)
 -- ARGV[2] = window_ms (e.g., 60000)
 -- ARGV[3] = limit (max requests in window)
+-- ARGV[4] = requestId (unique string identifier)
 
 local key = KEYS[1]
 local now = tonumber(ARGV[1])
 local window = tonumber(ARGV[2])
 local limit = tonumber(ARGV[3])
+local reqId = ARGV[4] or ""
+
+local member = ARGV[1] .. ":" .. reqId
 
 -- remove old entries
 redis.call('ZREMRANGEBYSCORE', key, 0, now - window)
--- add current
-redis.call('ZADD', key, now, tostring(now))
+-- add current unique member with score = now
+redis.call('ZADD', key, now, member)
 -- get count
 local count = redis.call('ZCARD', key)
 -- set expiry

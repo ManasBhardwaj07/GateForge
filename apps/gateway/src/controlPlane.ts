@@ -5,6 +5,8 @@ import pool from './lib/db.js'
 import redis from './lib/redis.js'
 import { recordAudit } from './lib/audit.js'
 import { validateTargetUrl } from './lib/ssrf.js'
+import { clearRouteCache } from './middleware/routeMatcher.js'
+import { clearProxyCache } from './proxy/proxyHandler.js'
 
 const router = express.Router()
 
@@ -112,6 +114,49 @@ router.post('/organizations', async (req, res) => {
   }
 })
 
+async function invalidateOrgCache(orgId: string) {
+  try {
+    const keys = await pool.query('SELECT "keyHash" FROM "ApiKey" WHERE "organizationId"=$1', [orgId])
+    for (const row of keys.rows) {
+      if (row.keyHash) {
+        await redis.del(`key_auth:${row.keyHash}`)
+      }
+    }
+  } catch (e) {
+    console.error('Failed to flush org key cache:', e)
+  }
+}
+
+router.put('/organizations/:id', async (req, res) => {
+  const { id } = req.params
+  const { name, planId } = req.body
+  try {
+    const q = `
+      UPDATE "Organization"
+      SET name = COALESCE($1, name), "planId" = COALESCE($2, "planId"), "updatedAt" = now()
+      WHERE id = $3
+      RETURNING *
+    `
+    const r = await pool.query(q, [name || null, planId || null, id])
+    if (r.rowCount === 0) return res.status(404).json({ error: 'Organization not found' })
+
+    await invalidateOrgCache(id)
+
+    await recordAudit({
+      actor: getActor(req),
+      organizationId: id,
+      action: 'organization.update',
+      targetType: 'Organization',
+      targetId: id,
+      metadata: { planId },
+    })
+
+    res.json(r.rows[0])
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update organization' })
+  }
+})
+
 // ---------------------------------------------------------------------------
 // Plans
 // ---------------------------------------------------------------------------
@@ -198,6 +243,9 @@ router.post('/upstreams', async (req, res) => {
       metadata: { name: upstream.name, baseUrl: upstream.baseUrl, timeoutMs: upstream.timeoutMs },
     })
 
+    clearRouteCache()
+    clearProxyCache()
+
     res.status(201).json(upstream)
   } catch (err) {
     res.status(500).json({ error: 'Failed to create upstream' })
@@ -256,6 +304,8 @@ router.post('/routes', async (req, res) => {
       targetId: route.id,
       metadata: { slug: route.slug, pathPrefix: route.pathPrefix, upstreamId: route.upstreamId },
     })
+
+    clearRouteCache()
 
     res.status(201).json(route)
   } catch (err: any) {
