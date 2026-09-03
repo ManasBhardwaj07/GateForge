@@ -17,7 +17,9 @@
     "start:mock-payments": "cd apps/mock-payments && npm run dev",
     "build:dashboard": "cd apps/dashboard && npm run build",
     "typecheck": "tsc -p tsconfig.json --noEmit && npm run typecheck --workspace=apps/dashboard",
-    "prisma:generate": "cd packages/db && npm run prisma:generate"
+    "prisma:generate": "cd packages/db && npm run prisma:generate",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -27,6 +29,7 @@
     "@types/express": "^5.0.6",
     "@types/http-proxy-middleware": "^0.19.3",
     "@types/node": "^26.4.1",
-    "@types/pg": "^8.23.1"
+    "@types/pg": "^8.23.1",
+    "vitest": "^5.0.0"
   }
 }

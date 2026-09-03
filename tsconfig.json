@@ -12,6 +12,6 @@
     "jsx": "preserve",
     "outDir": "dist"
   },
-  "include": ["apps/gateway/**/*", "apps/mock-orders/**/*", "apps/mock-payments/**/*", "packages/**/*"],
+  "include": ["apps/gateway/**/*", "apps/mock-orders/**/*", "apps/mock-payments/**/*", "packages/**/*", "tests/**/*"],
   "exclude": ["node_modules", "dist", "apps/dashboard"]
 }

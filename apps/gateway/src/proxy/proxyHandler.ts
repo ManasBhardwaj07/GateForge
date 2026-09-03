@@ -30,7 +30,6 @@ export function getOrCreateProxy(target: string, timeout = 30000): RequestHandle
         } catch (e) {}
         return path
       },
-      timeout,
       proxyTimeout: timeout,
       selfHandleResponse: false,
       on: {
