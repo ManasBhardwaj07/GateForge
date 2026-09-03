@@ -47,76 +47,87 @@ export function recordUsage(
   counters.set(key, current)
 }
 
-export async function flushUsage() {
-  if (counters.size === 0) return
+let activeFlushPromise: Promise<void> | null = null
 
-  // Snapshot current counters without clearing to guarantee zero data loss on crash
-  const snapshot = new Map<BucketKey, BucketMetrics>()
-  for (const [k, v] of counters.entries()) {
-    if (v.requestCount > 0) {
-      snapshot.set(k, { ...v })
-    }
-  }
+export function flushUsage(): Promise<void> {
+  if (activeFlushPromise) return activeFlushPromise
+  if (counters.size === 0) return Promise.resolve()
 
-  if (snapshot.size === 0) return
-
-  const client = await pool.connect()
-  try {
-    await client.query('BEGIN')
-    for (const [key, m] of snapshot.entries()) {
-      const [orgId, routeId, hour] = key.split('::')
-      const q = `
-        INSERT INTO "UsageHourly" (
-          id, "organizationId", "routeId", "hourBucket",
-          "requestCount", "successCount", "clientErrCount", "serverErrCount", "rateLimitedCount", "quotaHitCount"
-        )
-        VALUES (
-          gen_random_uuid()::text, $1, $2, $3::timestamp, $4, $5, $6, $7, $8, $9
-        )
-        ON CONFLICT ("organizationId", "routeId", "hourBucket")
-        DO UPDATE SET
-          "requestCount" = "UsageHourly"."requestCount" + EXCLUDED."requestCount",
-          "successCount" = "UsageHourly"."successCount" + EXCLUDED."successCount",
-          "clientErrCount" = "UsageHourly"."clientErrCount" + EXCLUDED."clientErrCount",
-          "serverErrCount" = "UsageHourly"."serverErrCount" + EXCLUDED."serverErrCount",
-          "rateLimitedCount" = "UsageHourly"."rateLimitedCount" + EXCLUDED."rateLimitedCount",
-          "quotaHitCount" = "UsageHourly"."quotaHitCount" + EXCLUDED."quotaHitCount"
-      `
-      await client.query(q, [
-        orgId,
-        routeId,
-        hour,
-        m.requestCount,
-        m.successCount,
-        m.clientErrCount,
-        m.serverErrCount,
-        m.rateLimitedCount,
-        m.quotaHitCount,
-      ])
-    }
-    await client.query('COMMIT')
-
-    // Only deduct committed snapshot amounts from live counters
-    for (const [key, flushed] of snapshot.entries()) {
-      const current = counters.get(key)
-      if (current) {
-        current.requestCount -= flushed.requestCount
-        current.successCount -= flushed.successCount
-        current.clientErrCount -= flushed.clientErrCount
-        current.serverErrCount -= flushed.serverErrCount
-        current.rateLimitedCount -= flushed.rateLimitedCount
-        current.quotaHitCount -= flushed.quotaHitCount
-        if (current.requestCount <= 0) {
-          counters.delete(key)
+  activeFlushPromise = (async () => {
+    try {
+      // Snapshot current counters without clearing to guarantee zero data loss on crash
+      const snapshot = new Map<BucketKey, BucketMetrics>()
+      for (const [k, v] of counters.entries()) {
+        if (v.requestCount > 0) {
+          snapshot.set(k, { ...v })
         }
       }
+
+      if (snapshot.size === 0) return
+
+      const client = await pool.connect()
+      try {
+        await client.query('BEGIN')
+        for (const [key, m] of snapshot.entries()) {
+          const [orgId, routeId, hour] = key.split('::')
+          const q = `
+            INSERT INTO "UsageHourly" (
+              id, "organizationId", "routeId", "hourBucket",
+              "requestCount", "successCount", "clientErrCount", "serverErrCount", "rateLimitedCount", "quotaHitCount"
+            )
+            VALUES (
+              gen_random_uuid()::text, $1, $2, $3::timestamp, $4, $5, $6, $7, $8, $9
+            )
+            ON CONFLICT ("organizationId", "routeId", "hourBucket")
+            DO UPDATE SET
+              "requestCount" = "UsageHourly"."requestCount" + EXCLUDED."requestCount",
+              "successCount" = "UsageHourly"."successCount" + EXCLUDED."successCount",
+              "clientErrCount" = "UsageHourly"."clientErrCount" + EXCLUDED."clientErrCount",
+              "serverErrCount" = "UsageHourly"."serverErrCount" + EXCLUDED."serverErrCount",
+              "rateLimitedCount" = "UsageHourly"."rateLimitedCount" + EXCLUDED."rateLimitedCount",
+              "quotaHitCount" = "UsageHourly"."quotaHitCount" + EXCLUDED."quotaHitCount"
+          `
+          await client.query(q, [
+            orgId,
+            routeId,
+            hour,
+            m.requestCount,
+            m.successCount,
+            m.clientErrCount,
+            m.serverErrCount,
+            m.rateLimitedCount,
+            m.quotaHitCount,
+          ])
+        }
+        await client.query('COMMIT')
+
+        // Only deduct committed snapshot amounts from live counters
+        for (const [key, flushed] of snapshot.entries()) {
+          const current = counters.get(key)
+          if (current) {
+            current.requestCount -= flushed.requestCount
+            current.successCount -= flushed.successCount
+            current.clientErrCount -= flushed.clientErrCount
+            current.serverErrCount -= flushed.serverErrCount
+            current.rateLimitedCount -= flushed.rateLimitedCount
+            current.quotaHitCount -= flushed.quotaHitCount
+            if (current.requestCount <= 0) {
+              counters.delete(key)
+            }
+          }
+        }
+      } catch (err) {
+        await client.query('ROLLBACK')
+        console.error('Usage flush failed:', err)
+      } finally {
+        client.release()
+      }
+    } finally {
+      activeFlushPromise = null
     }
-  } catch (err) {
-    await client.query('ROLLBACK')
-    console.error('Usage flush failed:', err)
-  } finally {
-    client.release()
-  }
+  })()
+
+  return activeFlushPromise
 }
 
 let timer: NodeJS.Timeout | null = null

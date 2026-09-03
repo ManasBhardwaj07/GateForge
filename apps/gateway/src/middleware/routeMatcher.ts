@@ -28,10 +28,13 @@ export function matchesRoutePrefix(reqPath: string, routePrefix: string): boolea
 export async function loadRoutes() {
   const q = `
     SELECT r.id, r.slug, r."pathPrefix", r."upstreamId", r."timeoutMs",
-           u."baseUrl" as "upstreamBaseUrl", u."timeoutMs" as "upstreamTimeoutMs"
+           u."baseUrl" as "upstreamBaseUrl", u."timeoutMs" as "upstreamTimeoutMs",
+           p.id as "planId", p."rateLimitPerMinute", p."quotaPerMonth"
     FROM "Route" r
     JOIN "Upstream" u ON r."upstreamId" = u.id
+    LEFT JOIN "Plan" p ON r."planOverrideId" = p.id
     WHERE r."isActive" = true AND u."isActive" = true
+    ORDER BY r."createdAt" DESC
   `
   const res = await pool.query(q)
   routesCache = res.rows.map((r) => {
@@ -39,7 +42,7 @@ export async function loadRoutes() {
     if (process.env.USE_LOCAL_UPSTREAM === '1' || process.env.NODE_ENV !== 'production') {
       base = base.replace('//mock-orders', '//localhost').replace('//mock-payments', '//localhost')
     }
-    return {
+    const route: CachedRoute = {
       id: r.id,
       slug: r.slug,
       pathPrefix: r.pathPrefix,
@@ -47,6 +50,13 @@ export async function loadRoutes() {
       timeoutMs: r.timeoutMs || r.upstreamTimeoutMs || 30000,
       upstream: base,
     }
+    const planId = r.planId || r.planid
+    if (planId) {
+      const rateLimitPerMinute = r.rateLimitPerMinute ?? r.ratelimitperminute
+      const quotaPerMonth = r.quotaPerMonth ?? r.quotapermonth
+      ;(route as any).planOverride = { id: planId, rateLimitPerMinute, quotaPerMonth }
+    }
+    return route
   })
   lastLoad = Date.now()
 }

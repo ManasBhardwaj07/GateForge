@@ -73,4 +73,44 @@ export async function validateTargetUrl(target: string): Promise<boolean> {
   }
 }
 
+export function safeLookup(
+  hostname: string,
+  options: dns.LookupOptions,
+  callback: (err: NodeJS.ErrnoException | null, address: any, family: number) => void
+) {
+  dns.lookup(hostname, options, (err, address, family) => {
+    if (err) return callback(err, address as any, family)
+
+    try {
+      if (typeof address === 'string') {
+        if (isCloudMetadata(address)) throw new Error('cloud metadata address disallowed')
+
+        const isProd = process.env.NODE_ENV === 'production'
+        const allowPrivate = !isProd && process.env.ALLOW_PRIVATE_UPSTREAMS === '1'
+
+        if (!allowPrivate && isPrivateOrMetadata(address)) {
+          throw new Error('disallowed private IP address')
+        }
+      } else if (Array.isArray(address)) {
+        for (const a of address) {
+          const addrStr = typeof a === 'string' ? a : a.address
+          if (isCloudMetadata(addrStr)) throw new Error('cloud metadata address disallowed')
+
+          const isProd = process.env.NODE_ENV === 'production'
+          const allowPrivate = !isProd && process.env.ALLOW_PRIVATE_UPSTREAMS === '1'
+
+          if (!allowPrivate && isPrivateOrMetadata(addrStr)) {
+            throw new Error('disallowed private IP address')
+          }
+        }
+      }
+      callback(null, address, family)
+    } catch (e: any) {
+      const error = new Error(`SSRF Validation Failed: ${e.message}`) as NodeJS.ErrnoException
+      error.code = 'ENOTFOUND'
+      callback(error, '' as any, 0)
+    }
+  })
+}
+
 export { isPrivateOrMetadata, isCloudMetadata }

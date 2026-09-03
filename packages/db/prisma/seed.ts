@@ -63,19 +63,28 @@ async function main() {
   }
 
   // API Key (raw)
-  const rawKey = process.env.GF_TEST_KEY || 'gf_test_123'
-  const keyHash = createHash('sha256').update(rawKey).digest('hex')
-  const keyPrefix = rawKey.slice(0, 8)
-  const apiKeyId = randomUUID()
-  const keyCheck = await client.query(`SELECT id FROM "ApiKey" WHERE "keyHash"=$1`, [keyHash])
-  if (keyCheck.rowCount === 0) {
-    await client.query(
-      `INSERT INTO "ApiKey" (id, "keyHash", "keyPrefix", "organizationId", status, "createdAt", "updatedAt") VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      [apiKeyId, keyHash, keyPrefix, orgId, 'ACTIVE', now, now]
-    )
-  }
+  const isDev = process.env.NODE_ENV === 'development'
+  const rawKey = process.env.GF_TEST_KEY || (isDev ? 'gf_test_123' : null)
 
-  console.log('seed completed — raw key:', rawKey, 'keyPrefix:', keyPrefix)
+  if (rawKey) {
+    const keyHash = createHash('sha256').update(rawKey).digest('hex')
+    const keyPrefix = rawKey.slice(0, 8)
+    const apiKeyId = randomUUID()
+    const keyCheck = await client.query(`SELECT id FROM "ApiKey" WHERE "keyHash"=$1`, [keyHash])
+    if (keyCheck.rowCount === 0) {
+      await client.query(
+        `INSERT INTO "ApiKey" (id, "keyHash", "keyPrefix", "organizationId", status, "createdAt", "updatedAt") VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [apiKeyId, keyHash, keyPrefix, orgId, 'ACTIVE', now, now]
+      )
+    }
+    if (isDev) {
+      console.log('seed completed — raw key:', rawKey, 'keyPrefix:', keyPrefix)
+    } else {
+      console.log('seed completed — test key seeded. keyPrefix:', keyPrefix)
+    }
+  } else {
+    console.log('seed completed — skipping test API key (not in development and GF_TEST_KEY unset)')
+  }
   await client.end()
 }
 

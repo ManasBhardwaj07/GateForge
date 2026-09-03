@@ -1,4 +1,5 @@
 -- slidingWindow.lua
+-- Atomic sliding window rate limiter for Redis
 -- KEYS[1] = key (e.g., rate:<orgId>:<routeId>)
 -- ARGV[1] = now (ms timestamp)
 -- ARGV[2] = window_ms (e.g., 60000)
@@ -11,23 +12,21 @@ local window = tonumber(ARGV[2])
 local limit = tonumber(ARGV[3])
 local reqId = ARGV[4] or ""
 
-local member = ARGV[1] .. ":" .. reqId
-
--- remove old entries
+-- remove expired entries outside the sliding window
 redis.call('ZREMRANGEBYSCORE', key, 0, now - window)
--- add current unique member with score = now
-redis.call('ZADD', key, now, member)
--- get count
+
+-- get current count of accepted requests in active window
 local count = redis.call('ZCARD', key)
--- set expiry
-redis.call('PEXPIRE', key, window)
 
-local allowed = 0
-if count <= limit then
-	allowed = 1
+if limit > 0 and count < limit then
+	-- request accepted: add member and update TTL
+	local member = ARGV[1] .. ":" .. reqId
+	redis.call('ZADD', key, now, member)
+	redis.call('PEXPIRE', key, window)
+	local remaining = limit - count - 1
+	return { 1, remaining }
+else
+	-- request rejected: do not record rejected attempts in ZSET
+	redis.call('PEXPIRE', key, window)
+	return { 0, 0 }
 end
-
-local remaining = limit - count
-if remaining < 0 then remaining = 0 end
-
-return { allowed, remaining }

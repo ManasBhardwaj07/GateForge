@@ -1,16 +1,13 @@
-const CONTROL_API_BASE = process.env.NEXT_PUBLIC_CONTROL_API || 'http://localhost:4001/control'
+const CONTROL_API_BASE =
+  typeof window !== 'undefined'
+    ? '/api/control'
+    : (process.env.INTERNAL_CONTROL_API_URL || process.env.CONTROL_API_URL || 'http://localhost:4001/control')
 const GATEWAY_BASE = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:4000'
-const CONTROL_TOKEN = process.env.NEXT_PUBLIC_CONTROL_TOKEN || 'dev_operator_secret_token_123'
 
 function getHeaders(extra: Record<string, string> = {}): Record<string, string> {
-  const headers: Record<string, string> = {
-    'x-actor': 'dashboard_operator',
+  return {
     ...extra,
   }
-  if (CONTROL_TOKEN) {
-    headers['Authorization'] = `Bearer ${CONTROL_TOKEN}`
-  }
-  return headers
 }
 
 export interface Organization {
@@ -37,7 +34,6 @@ export interface Plan {
 export interface ApiKey {
   id: string
   keyPrefix: string
-  keyHash: string
   organizationId: string
   organizationName?: string
   organizationSlug?: string
@@ -121,12 +117,14 @@ export async function fetchHealth(): Promise<HealthStatus> {
   } catch (e) {}
 
   try {
-    const r = await fetch(`http://localhost:5001/health`, { cache: 'no-store' })
+    const ordersUrl = process.env.ORDERS_API_URL || 'http://localhost:5001'
+    const r = await fetch(`${ordersUrl}/health`, { cache: 'no-store' })
     if (r.ok) status.orders = 'online'
   } catch (e) {}
 
   try {
-    const r = await fetch(`http://localhost:5002/health`, { cache: 'no-store' })
+    const paymentsUrl = process.env.PAYMENTS_API_URL || 'http://localhost:5002'
+    const r = await fetch(`${paymentsUrl}/health`, { cache: 'no-store' })
     if (r.ok) status.payments = 'online'
   } catch (e) {}
 

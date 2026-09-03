@@ -19,13 +19,7 @@ export async function apiKeyAuth(req: Request, res: Response, next: NextFunction
 
   try {
     const cacheKey = `key_auth:${hash}`
-    let cached: string | null = null
-    try {
-      cached = await Redis.get(cacheKey)
-    } catch (redisErr) {
-      console.warn('[ApiKeyAuth] Redis cache lookup failed, degrading to PostgreSQL:', redisErr)
-    }
-
+    const cached = await Redis.get(cacheKey)
     if (cached) {
       const parsed = JSON.parse(cached)
       if (isExpired(parsed.expiresAt)) {
@@ -43,6 +37,7 @@ export async function apiKeyAuth(req: Request, res: Response, next: NextFunction
       JOIN "Organization" o ON a."organizationId" = o.id
       JOIN "Plan" p ON o."planId" = p.id
       WHERE a."keyHash" = $1
+      FOR SHARE
     `
     const r = await pool.query(q, [hash])
     if (r.rowCount === 0) return res.status(401).json({ error: 'Invalid API key' })
@@ -70,12 +65,7 @@ export async function apiKeyAuth(req: Request, res: Response, next: NextFunction
       },
     }
 
-    try {
-      await Redis.set(cacheKey, JSON.stringify(auth), 'EX', 30)
-    } catch (redisErr) {
-      console.warn('[ApiKeyAuth] Redis cache write failed:', redisErr)
-    }
-
+    await Redis.set(cacheKey, JSON.stringify(auth), 'EX', 60)
     rreq.auth = auth
     next()
   } catch (err) {

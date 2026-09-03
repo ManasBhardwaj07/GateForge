@@ -10,11 +10,34 @@ services:
       - '5433:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gateforge_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  db-setup:
+    image: node:24-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gateforge_dev
+      NODE_ENV: development
+    command: sh -c "npm install && cd packages/db && npx prisma db push && npm run seed"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   redis:
     image: redis:7-alpine
     ports:
       - '6379:6379'
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   mock-orders:
     build: ./apps/mock-orders
@@ -22,7 +45,13 @@ services:
     ports:
       - '5001:5001'
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5001/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   mock-payments:
     build: ./apps/mock-payments
@@ -30,7 +59,13 @@ services:
     ports:
       - '5002:5002'
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5002/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   gateway:
     build: ./apps/gateway
@@ -41,13 +76,24 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gateforge_dev
       REDIS_URL: redis://redis:6379
-      ALLOW_PRIVATE_UPSTREAMS: '1'
-      CONTROL_TOKEN: dev_operator_secret_token_123
+      ALLOW_PRIVATE_UPSTREAMS: ${ALLOW_PRIVATE_UPSTREAMS}
+      CONTROL_TOKEN: ${CONTROL_TOKEN}
     depends_on:
-      - mock-orders
-      - mock-payments
-      - redis
-      - postgres
+      postgres:
+        condition: service_healthy
+      db-setup:
+        condition: service_completed_successfully
+      mock-orders:
+        condition: service_healthy
+      mock-payments:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4000/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   dashboard:
     build: ./apps/dashboard
@@ -55,11 +101,12 @@ services:
     ports:
       - '3000:3000'
     environment:
-      NEXT_PUBLIC_CONTROL_API: http://localhost:4001/control
+      INTERNAL_CONTROL_API_URL: http://gateway:4001/control
       NEXT_PUBLIC_GATEWAY_URL: http://localhost:4000
-      NEXT_PUBLIC_CONTROL_TOKEN: dev_operator_secret_token_123
+      CONTROL_TOKEN: ${CONTROL_TOKEN}
     depends_on:
-      - gateway
+      gateway:
+        condition: service_healthy
 
 volumes:
   pgdata:

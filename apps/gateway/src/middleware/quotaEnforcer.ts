@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
 import redis, { evalScript } from '../lib/redis.js'
+import usage from '../lib/usage.js'
 
 export async function quotaEnforcer(req: Request, res: Response, next: NextFunction) {
   const policy = (req as any).policy
@@ -17,6 +18,7 @@ export async function quotaEnforcer(req: Request, res: Response, next: NextFunct
     res.setHeader('X-Quota-Limit', quota.toString())
     res.setHeader('X-Quota-Used', value.toString())
     if (allowed == 1) return next()
+    usage.recordUsage(auth.organization.id, (req as any).routeConfig.id, 'quota_hit')
     return res.status(429).json({ error: 'quota exceeded' })
   } catch (err) {
     next(err)

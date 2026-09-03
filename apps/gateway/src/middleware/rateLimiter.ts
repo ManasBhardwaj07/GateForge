@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express'
 import crypto from 'crypto'
 import redis, { evalScript } from '../lib/redis.js'
+import usage from '../lib/usage.js'
 
 export async function rateLimiter(req: Request, res: Response, next: NextFunction) {
   const policy = (req as any).policy
@@ -28,6 +29,7 @@ export async function rateLimiter(req: Request, res: Response, next: NextFunctio
     res.setHeader('X-RateLimit-Remaining', remaining.toString())
 
     if (allowed == 1) return next()
+    usage.recordUsage(auth.organization.id, routeConfig.id, 'rate_limit')
     return res.status(429).json({ error: 'rate limit exceeded' })
   } catch (err) {
     next(err)

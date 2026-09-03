@@ -125,7 +125,6 @@ export default function ApiKeysPage() {
               <tr className="border-b border-slate-800 text-xs font-mono uppercase text-slate-400">
                 <th className="pb-3 pl-2">Key Prefix</th>
                 <th className="pb-3">Organization</th>
-                <th className="pb-3">SHA-256 Hash</th>
                 <th className="pb-3">Status</th>
                 <th className="pb-3">Created</th>
                 <th className="pb-3 text-right pr-2">Action</th>
@@ -134,7 +133,7 @@ export default function ApiKeysPage() {
             <tbody className="divide-y divide-slate-800/50">
               {keys.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-500 font-mono text-xs">
+                  <td colSpan={5} className="py-8 text-center text-slate-500 font-mono text-xs">
                     No API keys issued yet. Click "Issue New Key" above.
                   </td>
                 </tr>
@@ -148,9 +147,6 @@ export default function ApiKeysPage() {
                     </td>
                     <td className="py-4 text-xs font-medium text-white">
                       {k.organizationName || k.organizationSlug || 'Acme Corp'}
-                    </td>
-                    <td className="py-4 font-mono text-xs text-slate-400">
-                      <span className="text-slate-500">{k.keyHash.slice(0, 16)}...{k.keyHash.slice(-8)}</span>
                     </td>
                     <td className="py-4 text-xs">
                       <span className={`px-2.5 py-1 rounded-full font-mono text-[11px] font-bold ${
@@ -167,12 +163,12 @@ export default function ApiKeysPage() {
                     <td className="py-4 text-right pr-2">
                       {k.status === 'ACTIVE' ? (
                         <button
-                          onClick={() => handleRevoke(k.keyHash)}
-                          disabled={revokingId === k.keyHash}
+                          onClick={() => handleRevoke(k.id)}
+                          disabled={revokingId === k.id}
                           className="px-3 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-medium transition-colors inline-flex items-center space-x-1.5"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
-                          <span>{revokingId === k.keyHash ? 'Revoking...' : 'Revoke'}</span>
+                          <span>{revokingId === k.id ? 'Revoking...' : 'Revoke'}</span>
                         </button>
                       ) : (
                         <span className="text-xs text-slate-600 font-mono">Revoked</span>

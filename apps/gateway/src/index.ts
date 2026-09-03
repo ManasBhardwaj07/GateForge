@@ -10,32 +10,20 @@ import { proxyMiddlewareHandler } from './proxy/proxyHandler.js'
 import redis, { loadScripts } from './lib/redis.js'
 import usage from './lib/usage.js'
 import control from './controlPlane.js'
+import pool from './lib/db.js'
 
 const app = express()
 const PORT = process.env.PORT || 4000
 
-const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim())
-  : ['http://localhost:3000', 'http://127.0.0.1:3000']
-
-app.use(
-  cors({
-    origin: allowedOrigins,
-    credentials: true,
-    exposedHeaders: [
-      'X-Request-Id',
-      'X-RateLimit-Limit',
-      'X-RateLimit-Remaining',
-      'X-RateLimit-Reset',
-      'X-Quota-Limit',
-      'X-Quota-Used',
-    ],
-  })
-)
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  credentials: true,
+  exposedHeaders: ['X-Request-Id', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset', 'X-Quota-Limit', 'X-Quota-Used']
+}))
 
 app.use(requestId)
 
-// health
+// health (no body parsing needed)
 app.get('/health', async (_req, res) => {
   try {
     const ping = await redis.ping()
@@ -55,7 +43,7 @@ usage.startUsageFlush()
 const controlApp = express()
 controlApp.use('/control', control)
 const CONTROL_PORT = process.env.CONTROL_PORT || 4001
-controlApp.listen(CONTROL_PORT, () => console.log(`control plane listening on ${CONTROL_PORT}`))
+const controlServer = controlApp.listen(CONTROL_PORT, () => console.log(`control plane listening on ${CONTROL_PORT}`))
 
 // pipeline
 app.use(apiKeyAuth)
@@ -72,7 +60,7 @@ app.use((err: any, _req: any, res: any, _next: any) => {
   res.status(500).json({ error: 'internal' })
 })
 
-app.listen(PORT, () => console.log(`gateway listening on ${PORT}`))
+const server = app.listen(PORT, () => console.log(`gateway listening on ${PORT}`))
 
 // graceful shutdown
 const shutdown = async () => {
@@ -81,6 +69,21 @@ const shutdown = async () => {
     await usage.stopUsageFlush()
   } catch (e) {
     console.error('Error stopping usage flush:', e)
+  }
+  try {
+    if (server) {
+      await new Promise((resolve) => server.close(resolve))
+    }
+    if (controlServer) {
+      await new Promise((resolve) => controlServer.close(resolve))
+    }
+  } catch (e) {
+    console.error('Error closing HTTP server:', e)
+  }
+  try {
+    await pool.end()
+  } catch (e) {
+    console.warn('Error closing db pool:', e)
   }
   try {
     await redis.quit()

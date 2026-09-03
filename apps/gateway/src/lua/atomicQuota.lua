@@ -13,19 +13,15 @@ if limit < 0 then
 end
 
 local curr = redis.call('GET', key)
-if not curr then
-	curr = 0
-else
-	curr = tonumber(curr)
+local used = curr and tonumber(curr) or 0
+if used + inc > limit then
+	return {0, used}
 end
 
-local next = curr + inc
-if next > limit then
-	return {0, curr}
+local new_used = redis.call('INCRBY', key, inc)
+if used == 0 then
+	-- set expiry to 35 days to safely cover month boundary
+	redis.call('PEXPIRE', key, 35 * 24 * 60 * 60 * 1000)
 end
 
-redis.call('INCRBY', key, inc)
--- set expiry to 35 days to safely cover month boundary
-redis.call('PEXPIRE', key, 35 * 24 * 60 * 60 * 1000)
-
-return {1, next}
+return {1, new_used}

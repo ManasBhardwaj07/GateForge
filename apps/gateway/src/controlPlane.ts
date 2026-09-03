@@ -10,14 +10,10 @@ import { clearProxyCache } from './proxy/proxyHandler.js'
 
 const router = express.Router()
 
-const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim())
-  : ['http://localhost:3000', 'http://127.0.0.1:3000']
-
 // CORS configuration allowing Next.js Dashboard
 router.use(
   cors({
-    origin: allowedOrigins,
+    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-actor', 'X-Actor'],
@@ -39,20 +35,27 @@ router.use(async (req, res, next) => {
       return res.status(429).json({ error: 'Control plane rate limit exceeded' })
     }
   } catch (e) {
-    // Fail open if Redis is temporarily unreachable
+    // Fail closed if Redis is unreachable
+    return res.status(500).json({ error: 'Internal Server Error: Rate limiting unavailable' })
   }
   next()
 })
 
-// Operator Auth Guard (if CONTROL_TOKEN is set in environment)
+// Operator Auth Guard
+const token = process.env.CONTROL_TOKEN
+if (!token) {
+  console.error('FATAL: CONTROL_TOKEN environment variable is required.')
+  process.exit(1)
+}
+
 router.use((req, res, next) => {
-  const token = process.env.CONTROL_TOKEN
-  if (token) {
-    const authHeader = (req.headers['authorization'] || '') as string
-    const bearer = authHeader.replace(/^Bearer\s+/i, '').trim()
-    if (!bearer || bearer !== token) {
-      return res.status(401).json({ error: 'Unauthorized: Invalid or missing operator token' })
-    }
+  if (!token) {
+    return res.status(500).json({ error: 'Server misconfiguration: CONTROL_TOKEN is required' })
+  }
+  const authHeader = (req.headers['authorization'] || '') as string
+  const bearer = authHeader.replace(/^Bearer\s+/i, '').trim()
+  if (!bearer || bearer !== token) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid or missing operator token' })
   }
   next()
 })
@@ -329,7 +332,7 @@ router.get('/api-keys', async (req, res) => {
   const offset = Math.max(Number(req.query.offset) || 0, 0)
   try {
     const q = `
-      SELECT k.id, k."keyPrefix", k."keyHash", k.status, k."organizationId", k."lastUsedAt", k."expiresAt", k."createdAt", k."updatedAt",
+      SELECT k.id, k."keyPrefix", k.status, k."organizationId", k."lastUsedAt", k."expiresAt", k."createdAt", k."updatedAt",
              o.name as "organizationName", o.slug as "organizationSlug"
       FROM "ApiKey" k
       JOIN "Organization" o ON k."organizationId" = o.id
@@ -378,8 +381,9 @@ router.post('/api-keys', async (req, res) => {
     })
 
     // Return the secret key ONCE for the user to copy
+    const { keyHash: _droppedHash, ...safeRecord } = keyRecord
     res.status(201).json({
-      ...keyRecord,
+      ...safeRecord,
       rawKey: rawSecret,
     })
   } catch (err) {
@@ -414,6 +418,7 @@ router.post('/api-keys/:identifier/revoke', async (req, res) => {
       await redis.del(`key_auth:${revokedKey.keyHash}`)
     } catch (e) {
       console.error('Redis cache invalidation warning:', e)
+      throw e // Ensure DB rollback on cache invalidation failure
     }
 
     await recordAudit({
@@ -422,11 +427,13 @@ router.post('/api-keys/:identifier/revoke', async (req, res) => {
       action: 'key.revoked',
       targetType: 'ApiKey',
       targetId: revokedKey.id,
-      metadata: { keyPrefix: revokedKey.keyPrefix, keyHash: revokedKey.keyHash },
+      metadata: { keyPrefix: revokedKey.keyPrefix },
     })
 
     await client.query('COMMIT')
-    res.json(revokedKey)
+    // Remove keyHash from response payload
+    const { keyHash, ...safeRevokedKey } = revokedKey
+    res.json(safeRevokedKey)
   } catch (err) {
     await client.query('ROLLBACK')
     res.status(500).json({ error: 'Failed to revoke API key' })
