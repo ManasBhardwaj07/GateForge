@@ -5,8 +5,8 @@ import https from 'https'
 import { validateTargetUrl, safeLookup } from '../lib/ssrf.js'
 import usage from '../lib/usage.js'
 
-const customHttpAgent = new http.Agent({ lookup: safeLookup as any })
-const customHttpsAgent = new https.Agent({ lookup: safeLookup as any })
+const customHttpAgent = new http.Agent({ lookup: safeLookup as any, autoSelectFamily: false })
+const customHttpsAgent = new https.Agent({ lookup: safeLookup as any, autoSelectFamily: false })
 
 const proxyCache = new Map<string, RequestHandler>()
 const MAX_PROXY_ENTRIES = 100
@@ -73,17 +73,27 @@ export function getOrCreateProxy(target: string, timeout = 30000): RequestHandle
   return proxy
 }
 
+const validatedTargets = new Set<string>()
+
 export function clearProxyCache() {
   proxyCache.clear()
+  validatedTargets.clear()
 }
 
 export function proxyMiddlewareHandler(req: Request, res: Response, next: NextFunction) {
   const target = (req as any).routeConfig?.upstream
   if (!target) return res.status(500).json({ error: 'No upstream target configured for route' })
 
+  const timeout = (req as any).routeConfig?.timeoutMs || 30000
+
+  if (validatedTargets.has(target)) {
+    const proxy = getOrCreateProxy(target, timeout)
+    return proxy(req, res, next)
+  }
+
   validateTargetUrl(target)
     .then(() => {
-      const timeout = (req as any).routeConfig?.timeoutMs || 30000
+      validatedTargets.add(target)
       const proxy = getOrCreateProxy(target, timeout)
       proxy(req, res, next)
     })

@@ -39,7 +39,7 @@ export async function loadRoutes() {
   const res = await pool.query(q)
   routesCache = res.rows.map((r) => {
     let base = r.upstreamBaseUrl || r.upstreambaseurl || ''
-    if (process.env.USE_LOCAL_UPSTREAM === '1' || process.env.NODE_ENV !== 'production') {
+    if (process.env.USE_LOCAL_UPSTREAM === '1') {
       base = base.replace('//mock-orders', '//localhost').replace('//mock-payments', '//localhost')
     }
     const route: CachedRoute = {

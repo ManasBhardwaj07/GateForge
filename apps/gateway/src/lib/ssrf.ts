@@ -75,11 +75,18 @@ export async function validateTargetUrl(target: string): Promise<boolean> {
 
 export function safeLookup(
   hostname: string,
-  options: dns.LookupOptions,
-  callback: (err: NodeJS.ErrnoException | null, address: any, family: number) => void
+  options: any,
+  callback?: (err: NodeJS.ErrnoException | null, address: any, family: number) => void
 ) {
-  dns.lookup(hostname, options, (err, address, family) => {
-    if (err) return callback(err, address as any, family)
+  let cb = callback
+  let opts = options
+  if (typeof options === 'function') {
+    cb = options
+    opts = {}
+  }
+
+  dns.lookup(hostname, opts, (err, address, family) => {
+    if (err) return cb?.(err, address as any, family)
 
     try {
       if (typeof address === 'string') {
@@ -92,7 +99,7 @@ export function safeLookup(
           throw new Error('disallowed private IP address')
         }
       } else if (Array.isArray(address)) {
-        for (const a of address) {
+        for (const a of (address as any[])) {
           const addrStr = typeof a === 'string' ? a : a.address
           if (isCloudMetadata(addrStr)) throw new Error('cloud metadata address disallowed')
 
@@ -104,11 +111,11 @@ export function safeLookup(
           }
         }
       }
-      callback(null, address, family)
+      cb?.(null, address, family)
     } catch (e: any) {
       const error = new Error(`SSRF Validation Failed: ${e.message}`) as NodeJS.ErrnoException
       error.code = 'ENOTFOUND'
-      callback(error, '' as any, 0)
+      cb?.(error, '' as any, 0)
     }
   })
 }
