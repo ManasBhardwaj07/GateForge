@@ -3,10 +3,11 @@ import pool from '../../apps/gateway/src/lib/db.js'
 
 export async function createTestPlan(name: string, rateLimitPerMinute = 60, quotaPerMonth = 1000) {
   const id = `test_plan_${randomUUID().replace(/-/g, '').slice(0, 12)}`
+  const uniqueName = `${name}_${randomUUID().slice(0, 8)}`
   const res = await pool.query(
     `INSERT INTO "Plan" (id, name, "rateLimitPerMinute", "quotaPerMonth", "createdAt", "updatedAt")
      VALUES ($1, $2, $3, $4, now(), now()) RETURNING *`,
-    [id, name, rateLimitPerMinute, quotaPerMonth]
+    [id, uniqueName, rateLimitPerMinute, quotaPerMonth]
   )
   return res.rows[0]
 }
@@ -84,6 +85,12 @@ export async function cleanupTestData(data: {
   routeIds?: string[]
   keyIds?: string[]
 }) {
+  if (data.orgIds && data.orgIds.length > 0) {
+    await pool.query(`DELETE FROM "UsageHourly" WHERE "organizationId" = ANY($1)`, [data.orgIds])
+  }
+  if (data.routeIds && data.routeIds.length > 0) {
+    await pool.query(`DELETE FROM "UsageHourly" WHERE "routeId" = ANY($1)`, [data.routeIds])
+  }
   if (data.keyIds && data.keyIds.length > 0) {
     await pool.query(`DELETE FROM "ApiKey" WHERE id = ANY($1)`, [data.keyIds])
   }
