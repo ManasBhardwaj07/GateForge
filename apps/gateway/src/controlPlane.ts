@@ -10,10 +10,14 @@ import { clearProxyCache } from './proxy/proxyHandler.js'
 
 const router = express.Router()
 
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim())
+  : ['http://localhost:3000', 'http://127.0.0.1:3000']
+
 // CORS configuration allowing Next.js Dashboard
 router.use(
   cors({
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-actor', 'X-Actor'],

@@ -14,15 +14,28 @@ import control from './controlPlane.js'
 const app = express()
 const PORT = process.env.PORT || 4000
 
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
-  credentials: true,
-  exposedHeaders: ['X-Request-Id', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset', 'X-Quota-Limit', 'X-Quota-Used']
-}))
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim())
+  : ['http://localhost:3000', 'http://127.0.0.1:3000']
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+    exposedHeaders: [
+      'X-Request-Id',
+      'X-RateLimit-Limit',
+      'X-RateLimit-Remaining',
+      'X-RateLimit-Reset',
+      'X-Quota-Limit',
+      'X-Quota-Used',
+    ],
+  })
+)
 
 app.use(requestId)
 
-// health (no body parsing needed)
+// health
 app.get('/health', async (_req, res) => {
   try {
     const ping = await redis.ping()
@@ -64,7 +77,16 @@ app.listen(PORT, () => console.log(`gateway listening on ${PORT}`))
 // graceful shutdown
 const shutdown = async () => {
   console.log('shutting down gateway')
-  try { await usage.stopUsageFlush() } catch (e) {}
+  try {
+    await usage.stopUsageFlush()
+  } catch (e) {
+    console.error('Error stopping usage flush:', e)
+  }
+  try {
+    await redis.quit()
+  } catch (e) {
+    console.warn('Error closing redis client:', e)
+  }
   process.exit(0)
 }
 process.on('SIGINT', shutdown)
