@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'crypto'
 import pool from '../../apps/gateway/src/lib/db.js'
+import redis from '../../apps/gateway/src/lib/redis.js'
 
 export async function createTestPlan(name: string, rateLimitPerMinute = 60, quotaPerMonth = 1000) {
   const id = `test_plan_${randomUUID().replace(/-/g, '').slice(0, 12)}`
@@ -36,6 +37,8 @@ export async function createTestApiKey(
   const keyPrefix = rawKey.slice(0, 8)
   const status = options.status || 'ACTIVE'
   const expiresAt = options.expiresAt || null
+
+  await redis.del(`key_auth:${keyHash}`)
 
   const res = await pool.query(
     `INSERT INTO "ApiKey" (id, "keyHash", "keyPrefix", "organizationId", status, "expiresAt", "createdAt", "updatedAt")
