@@ -122,6 +122,13 @@ export interface HealthStatus {
 // ---------------------------------------------------------------------------
 
 export async function fetchHealth(): Promise<HealthStatus> {
+  if (typeof window !== 'undefined') {
+    try {
+      const r = await fetch('/api/health', { cache: 'no-store' })
+      if (r.ok) return await r.json()
+    } catch (e) {}
+  }
+
   const status: HealthStatus = {
     gateway: 'offline',
     controlApi: 'offline',

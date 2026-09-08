@@ -72,8 +72,8 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gateforge_dev
       REDIS_URL: redis://redis:6379
-      ALLOW_PRIVATE_UPSTREAMS: ${ALLOW_PRIVATE_UPSTREAMS}
-      CONTROL_TOKEN: ${CONTROL_TOKEN}
+      ALLOW_PRIVATE_UPSTREAMS: ${ALLOW_PRIVATE_UPSTREAMS:-1}
+      CONTROL_TOKEN: ${CONTROL_TOKEN:-dev_operator_secret_token_123}
     depends_on:
       postgres:
         condition: service_healthy
@@ -98,8 +98,8 @@ services:
       - '3000:3000'
     environment:
       INTERNAL_CONTROL_API_URL: http://gateway:4001/control
-      NEXT_PUBLIC_GATEWAY_URL: http://localhost:4000
-      CONTROL_TOKEN: ${CONTROL_TOKEN}
+      NEXT_PUBLIC_GATEWAY_URL: ${NEXT_PUBLIC_GATEWAY_URL:-}
+      CONTROL_TOKEN: ${CONTROL_TOKEN:-dev_operator_secret_token_123}
     depends_on:
       gateway:
         condition: service_healthy

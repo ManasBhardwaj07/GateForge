@@ -64,7 +64,13 @@ export default function PlaygroundPage() {
             ...(method === 'POST' || method === 'PUT' ? { body: customBody } : {}),
           }
 
-          const gatewayBase = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:4000'
+          const gatewayBase =
+            process.env.NEXT_PUBLIC_GATEWAY_URL ||
+            (typeof window !== 'undefined'
+              ? (window.location.port === '3000'
+                  ? `${window.location.protocol}//${window.location.hostname}:4000`
+                  : window.location.origin)
+              : 'http://localhost:4000')
           const res = await fetch(`${gatewayBase}${selectedRoute}`, fetchOptions)
           const duration = Math.round(performance.now() - startTime)
           const body = await res.json().catch(() => ({}))
