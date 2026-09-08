@@ -380,15 +380,18 @@ describe('M6.3 — Failure & Resilience Validation', () => {
 
     it('5. IPv4-mapped IPv6 private addresses are blocked correctly', async () => {
       process.env.ALLOW_PRIVATE_UPSTREAMS = '0'
-      await expect(validateTargetUrl('http://[::ffff:127.0.0.1]')).rejects.toThrow(/disallowed/)
-      await expect(validateTargetUrl('http://[::ffff:10.0.0.1]')).rejects.toThrow(/disallowed/)
-      await expect(validateTargetUrl('http://[::ffff:172.16.0.1]')).rejects.toThrow(/disallowed/)
-      await expect(validateTargetUrl('http://[::ffff:192.168.1.1]')).rejects.toThrow(/disallowed/)
-      await expect(validateTargetUrl('http://[::ffff:169.254.169.254]')).rejects.toThrow(/disallowed/)
+      try {
+        await expect(validateTargetUrl('http://[::ffff:127.0.0.1]')).rejects.toThrow(/disallowed/)
+        await expect(validateTargetUrl('http://[::ffff:10.0.0.1]')).rejects.toThrow(/disallowed/)
+        await expect(validateTargetUrl('http://[::ffff:172.16.0.1]')).rejects.toThrow(/disallowed/)
+        await expect(validateTargetUrl('http://[::ffff:192.168.1.1]')).rejects.toThrow(/disallowed/)
+        await expect(validateTargetUrl('http://[::ffff:169.254.169.254]')).rejects.toThrow(/disallowed/)
 
-      // A valid public IPv4-mapped IPv6 should be allowed
-      await expect(validateTargetUrl('http://[::ffff:8.8.8.8]')).resolves.toBe(true)
-      process.env.ALLOW_PRIVATE_UPSTREAMS = '1'
+        // A valid public IPv4-mapped IPv6 should be allowed
+        await expect(validateTargetUrl('http://[::ffff:8.8.8.8]')).resolves.toBe(true)
+      } finally {
+        process.env.ALLOW_PRIVATE_UPSTREAMS = '1'
+      }
     })
   })
 

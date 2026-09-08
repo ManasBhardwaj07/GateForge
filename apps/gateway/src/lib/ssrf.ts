@@ -3,22 +3,25 @@ import ipaddr from 'ipaddr.js'
 
 function isCloudMetadata(addr: string): boolean {
   try {
-    let ip = ipaddr.parse(addr)
+    const clean = addr.replace(/^\[|\]$/g, '')
+    let ip = ipaddr.parse(clean)
     if (ip.kind() === 'ipv6' && (ip as ipaddr.IPv6).isIPv4MappedAddress()) {
       ip = (ip as ipaddr.IPv6).toIPv4Address()
     }
     const normalized = ip.toString()
     return normalized === '169.254.169.254' || normalized === 'fd00:ec2::254'
   } catch {
-    return addr === '169.254.169.254' || addr === 'fd00:ec2::254'
+    const clean = addr.replace(/^\[|\]$/g, '')
+    return clean === '169.254.169.254' || clean === 'fd00:ec2::254'
   }
 }
 
 function isPrivateOrMetadata(addr: string): boolean {
   try {
-    if (isCloudMetadata(addr)) return true
+    const clean = addr.replace(/^\[|\]$/g, '')
+    if (isCloudMetadata(clean)) return true
 
-    let ip = ipaddr.parse(addr)
+    let ip = ipaddr.parse(clean)
     if (ip.kind() === 'ipv6' && (ip as ipaddr.IPv6).isIPv4MappedAddress()) {
       ip = (ip as ipaddr.IPv6).toIPv4Address()
     }
@@ -52,8 +55,11 @@ export async function validateTargetUrl(target: string): Promise<boolean> {
       throw new Error('disallowed URL protocol; only http: and https: are allowed')
     }
 
-    const hostname = u.hostname
-    if (!hostname) throw new Error('invalid host')
+    const rawHostname = u.hostname
+    if (!rawHostname) throw new Error('invalid host')
+
+    // Strip square brackets if hostname is IPv6 literal (e.g. [::1] -> ::1)
+    const hostname = rawHostname.replace(/^\[|\]$/g, '')
 
     // Cloud metadata endpoints are NEVER permitted under any circumstance
     if (isCloudMetadata(hostname)) throw new Error('cloud metadata address disallowed')
@@ -67,6 +73,7 @@ export async function validateTargetUrl(target: string): Promise<boolean> {
       if (isPrivateOrMetadata(hostname) && !allowPrivate) {
         throw new Error('disallowed private IP address')
       }
+      return true
     }
 
     if (!allowPrivate && (hostname === 'localhost' || hostname.endsWith('.local'))) {
@@ -76,8 +83,9 @@ export async function validateTargetUrl(target: string): Promise<boolean> {
     // Resolve DNS and verify all returned addresses
     const addrs = await dns.promises.lookup(hostname, { all: true })
     for (const a of addrs) {
-      if (isCloudMetadata(a.address)) throw new Error('cloud metadata address disallowed')
-      if (!allowPrivate && isPrivateOrMetadata(a.address)) {
+      const cleanAddr = a.address.replace(/^\[|\]$/g, '')
+      if (isCloudMetadata(cleanAddr)) throw new Error('cloud metadata address disallowed')
+      if (!allowPrivate && isPrivateOrMetadata(cleanAddr)) {
         throw new Error('disallowed resolved private address')
       }
     }
@@ -100,22 +108,26 @@ export function safeLookup(
     opts = {}
   }
 
-  dns.lookup(hostname, opts, (err, address, family) => {
+  // Strip square brackets if hostname is IPv6 literal
+  const cleanHostname = hostname.replace(/^\[|\]$/g, '')
+
+  dns.lookup(cleanHostname, opts, (err, address, family) => {
     if (err) return cb?.(err, address as any, family)
 
     try {
       if (typeof address === 'string') {
-        if (isCloudMetadata(address)) throw new Error('cloud metadata address disallowed')
+        const clean = address.replace(/^\[|\]$/g, '')
+        if (isCloudMetadata(clean)) throw new Error('cloud metadata address disallowed')
 
         const isProd = process.env.NODE_ENV === 'production'
         const allowPrivate = !isProd && process.env.ALLOW_PRIVATE_UPSTREAMS === '1'
 
-        if (!allowPrivate && isPrivateOrMetadata(address)) {
+        if (!allowPrivate && isPrivateOrMetadata(clean)) {
           throw new Error('disallowed private IP address')
         }
       } else if (Array.isArray(address)) {
         for (const a of (address as any[])) {
-          const addrStr = typeof a === 'string' ? a : a.address
+          const addrStr = (typeof a === 'string' ? a : a.address).replace(/^\[|\]$/g, '')
           if (isCloudMetadata(addrStr)) throw new Error('cloud metadata address disallowed')
 
           const isProd = process.env.NODE_ENV === 'production'
