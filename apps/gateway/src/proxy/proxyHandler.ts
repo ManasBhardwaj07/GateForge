@@ -73,27 +73,17 @@ export function getOrCreateProxy(target: string, timeout = 30000): RequestHandle
   return proxy
 }
 
-const validatedTargets = new Set<string>()
-
 export function clearProxyCache() {
   proxyCache.clear()
-  validatedTargets.clear()
 }
 
 export function proxyMiddlewareHandler(req: Request, res: Response, next: NextFunction) {
   const target = (req as any).routeConfig?.upstream
   if (!target) return res.status(500).json({ error: 'No upstream target configured for route' })
 
-  const timeout = (req as any).routeConfig?.timeoutMs || 30000
-
-  if (validatedTargets.has(target)) {
-    const proxy = getOrCreateProxy(target, timeout)
-    return proxy(req, res, next)
-  }
-
   validateTargetUrl(target)
     .then(() => {
-      validatedTargets.add(target)
+      const timeout = (req as any).routeConfig?.timeoutMs || 30000
       const proxy = getOrCreateProxy(target, timeout)
       proxy(req, res, next)
     })

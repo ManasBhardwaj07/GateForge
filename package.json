@@ -15,6 +15,7 @@
     "start:dashboard": "cd apps/dashboard && npm run dev",
     "start:mock-orders": "cd apps/mock-orders && npm run dev",
     "start:mock-payments": "cd apps/mock-payments && npm run dev",
+    "build": "npm run build:dashboard",
     "build:dashboard": "cd apps/dashboard && npm run build",
     "typecheck": "tsc -p tsconfig.json --noEmit && npm run typecheck --workspace=apps/dashboard",
     "prisma:generate": "cd packages/db && npm run prisma:generate",

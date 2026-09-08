@@ -17,14 +17,10 @@ services:
       retries: 5
 
   db-setup:
-    image: node:24-alpine
-    working_dir: /app
-    volumes:
-      - .:/app
+    build: ./packages/db
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gateforge_dev
       NODE_ENV: development
-    command: sh -c "npm install && cd packages/db && npx prisma db push && npm run seed"
     depends_on:
       postgres:
         condition: service_healthy

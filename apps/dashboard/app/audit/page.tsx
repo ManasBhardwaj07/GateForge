@@ -78,12 +78,12 @@ export default function AuditPage() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-slate-800 text-xs font-mono uppercase text-slate-400">
-                <th className="pb-3 pl-2">Action</th>
-                <th className="pb-3">Target Type</th>
-                <th className="pb-3">Target ID</th>
-                <th className="pb-3">Actor</th>
-                <th className="pb-3">Metadata</th>
-                <th className="pb-3 text-right pr-2">Timestamp</th>
+                <th className="pb-3 pl-3 pr-4">Action</th>
+                <th className="pb-3 px-4">Target Type</th>
+                <th className="pb-3 px-4">Target ID</th>
+                <th className="pb-3 px-4">Actor</th>
+                <th className="pb-3 px-4">Metadata</th>
+                <th className="pb-3 text-right pr-3 pl-4">Timestamp</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50">
@@ -94,38 +94,59 @@ export default function AuditPage() {
                   </td>
                 </tr>
               ) : (
-                filteredAudits.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="py-4 pl-2 font-mono text-xs">
-                      <span className={`px-2.5 py-1 rounded-md font-bold text-[11px] ${
-                        item.action.includes('revoke')
-                          ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
-                          : item.action.includes('create')
-                          ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                          : 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30'
-                      }`}>
-                        {item.action}
-                      </span>
-                    </td>
-                    <td className="py-4 font-mono text-xs text-white">{item.targetType}</td>
-                    <td className="py-4 font-mono text-xs text-slate-400">
-                      {item.targetId.length > 16 ? `${item.targetId.slice(0, 16)}...` : item.targetId}
-                    </td>
-                    <td className="py-4 text-xs font-mono text-slate-300">{item.actor}</td>
-                    <td className="py-4 text-xs font-mono text-slate-400">
-                      {item.metadata ? (
-                        <span className="px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[11px] text-slate-300">
-                          {JSON.stringify(item.metadata)}
+                filteredAudits.map((item) => {
+                  let metaDisplay: string | null = null
+                  if (item.metadata) {
+                    let obj = item.metadata
+                    if (typeof obj === 'string') {
+                      try { obj = JSON.parse(obj) } catch {}
+                    }
+                    if (typeof obj === 'object' && obj !== null) {
+                      const cleanEntries = Object.entries(obj).filter(([k]) => k !== 'seeded')
+                      if (cleanEntries.length > 0) {
+                        metaDisplay = cleanEntries.map(([k, v]) => `${k}: ${v}`).join(' · ')
+                      }
+                    } else {
+                      metaDisplay = String(obj)
+                    }
+                  }
+
+                  return (
+                    <tr key={item.id} className="hover:bg-slate-800/30 transition-colors">
+                      <td className="py-4 pl-3 pr-4 font-mono text-xs whitespace-nowrap">
+                        <span className={`px-2.5 py-1 rounded-md font-bold text-[11px] ${
+                          item.action.includes('revoke')
+                            ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                            : item.action.includes('create')
+                            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                            : 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30'
+                        }`}>
+                          {item.action}
                         </span>
-                      ) : (
-                        <span className="text-slate-600">—</span>
-                      )}
-                    </td>
-                    <td className="py-4 text-xs text-slate-500 font-mono text-right pr-2">
-                      {new Date(item.createdAt).toLocaleString()}
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="py-4 px-4 font-mono text-xs text-white whitespace-nowrap">{item.targetType}</td>
+                      <td className="py-4 px-4 font-mono text-xs text-slate-400 whitespace-nowrap">
+                        {item.targetId.length > 16 ? `${item.targetId.slice(0, 16)}...` : item.targetId}
+                      </td>
+                      <td className="py-4 px-4 text-xs font-mono text-slate-300 whitespace-nowrap">{item.actor}</td>
+                      <td className="py-4 px-4 text-xs font-mono text-slate-400 max-w-xs truncate">
+                        {metaDisplay ? (
+                          <span
+                            className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-300 inline-block max-w-full truncate"
+                            title={typeof item.metadata === 'object' ? JSON.stringify(item.metadata, null, 2) : String(item.metadata)}
+                          >
+                            {metaDisplay}
+                          </span>
+                        ) : (
+                          <span className="text-slate-600 text-[11px]">System Default</span>
+                        )}
+                      </td>
+                      <td className="py-4 text-xs text-slate-500 font-mono text-right pr-3 pl-4 whitespace-nowrap">
+                        {new Date(item.createdAt).toLocaleString()}
+                      </td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>

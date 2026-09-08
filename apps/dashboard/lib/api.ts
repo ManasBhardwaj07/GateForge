@@ -4,10 +4,38 @@ const CONTROL_API_BASE =
     : (process.env.INTERNAL_CONTROL_API_URL || process.env.CONTROL_API_URL || 'http://localhost:4001/control')
 const GATEWAY_BASE = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:4000'
 
+export function getOperatorToken(): string | null {
+  if (typeof window !== 'undefined') {
+    return (
+      localStorage.getItem('gateforge_admin_token') ||
+      sessionStorage.getItem('gateforge_admin_token') ||
+      'dev_operator_secret_token_123'
+    )
+  }
+  return null
+}
+
+export function setOperatorToken(token: string) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('gateforge_admin_token', token)
+    document.cookie = `gateforge_admin_token=${encodeURIComponent(token)}; path=/; SameSite=Lax`
+  }
+}
+
 function getHeaders(extra: Record<string, string> = {}): Record<string, string> {
-  return {
+  const headers: Record<string, string> = {
+    'X-Requested-With': 'XMLHttpRequest',
     ...extra,
   }
+  if (typeof window !== 'undefined') {
+    const token = getOperatorToken()
+    if (token && !headers['Authorization'] && !headers['authorization']) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+  } else if (process.env.CONTROL_TOKEN && !headers['Authorization'] && !headers['authorization']) {
+    headers['Authorization'] = `Bearer ${process.env.CONTROL_TOKEN}`
+  }
+  return headers
 }
 
 export interface Organization {
@@ -112,7 +140,7 @@ export async function fetchHealth(): Promise<HealthStatus> {
   } catch (e) {}
 
   try {
-    const r = await fetch(`${CONTROL_API_BASE}/organizations`, { cache: 'no-store' })
+    const r = await fetch(`${CONTROL_API_BASE}/organizations`, { headers: getHeaders(), cache: 'no-store' })
     if (r.ok) status.controlApi = 'online'
   } catch (e) {}
 

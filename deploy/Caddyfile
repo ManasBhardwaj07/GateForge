@@ -1,0 +1,39 @@
+# GateForge Production Reverse Proxy (Caddy)
+# Deployed on Azure Linux VM with automated TLS
+
+{$DOMAIN:localhost} {
+    # Public Gateway Data Plane Route
+    handle /api/* {
+        reverse_proxy gateway:4000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Gateway Health Probe (Publicly checkable)
+    handle /health {
+        reverse_proxy gateway:4000
+    }
+
+    # Dashboard Management Web UI
+    handle {
+        reverse_proxy dashboard:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Security Headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # Control API (Port 4001) is strictly internal and never exposed to the public Internet.
+}

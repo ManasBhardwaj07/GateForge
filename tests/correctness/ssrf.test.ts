@@ -92,13 +92,55 @@ describe('M6.1 — SSRF Protection Correctness', () => {
   it('12. helper functions isCloudMetadata and isPrivateOrMetadata behave accurately', () => {
     expect(isCloudMetadata('169.254.169.254')).toBe(true)
     expect(isCloudMetadata('fd00:ec2::254')).toBe(true)
+    expect(isCloudMetadata('::ffff:169.254.169.254')).toBe(true)
     expect(isCloudMetadata('8.8.8.8')).toBe(false)
 
     expect(isPrivateOrMetadata('127.0.0.1')).toBe(true)
     expect(isPrivateOrMetadata('10.0.0.5')).toBe(true)
     expect(isPrivateOrMetadata('172.20.0.1')).toBe(true)
     expect(isPrivateOrMetadata('192.168.0.100')).toBe(true)
+    expect(isPrivateOrMetadata('::1')).toBe(true)
+    expect(isPrivateOrMetadata('fc00::1')).toBe(true)
+    expect(isPrivateOrMetadata('fe80::1')).toBe(true)
     expect(isPrivateOrMetadata('8.8.8.8')).toBe(false)
     expect(isPrivateOrMetadata('1.1.1.1')).toBe(false)
   })
+
+  it('13. blocks IPv4-mapped IPv6 internal and cloud metadata addresses in helper and connection', () => {
+    expect(isPrivateOrMetadata('::ffff:127.0.0.1')).toBe(true)
+    expect(isPrivateOrMetadata('::ffff:10.0.0.1')).toBe(true)
+    expect(isPrivateOrMetadata('::ffff:172.16.0.1')).toBe(true)
+    expect(isPrivateOrMetadata('::ffff:192.168.1.1')).toBe(true)
+    expect(isPrivateOrMetadata('::ffff:169.254.169.254')).toBe(true)
+    expect(isPrivateOrMetadata('::ffff:8.8.8.8')).toBe(false)
+  })
+
+  it('14. DNS rebinding / TOCTOU: safeLookup blocks outbound socket when DNS dynamically changes to internal IP', withEnv({ ALLOW_PRIVATE_UPSTREAMS: '0', NODE_ENV: 'production' }, async () => {
+    // Rebinding lookup resolves hostname to cloud metadata IP at socket connection time
+    const rebindingLookup = (
+      _hostname: string,
+      options: any,
+      callback: (err: any, address: any, family?: number) => void
+    ) => {
+      safeLookup('169.254.169.254', options, callback)
+    }
+
+    const testAgent = new http.Agent({ lookup: rebindingLookup as any })
+
+    const connectionPromise = new Promise<{ status: number | null; error: any }>((resolve) => {
+      const req = http.request('http://rebind-test.attacker.internal:80', { agent: testAgent, timeout: 2000 }, (res) => {
+        resolve({ status: res.statusCode || null, error: null })
+      })
+      req.on('error', (err) => {
+        resolve({ status: null, error: err })
+      })
+      req.end()
+    })
+
+    const result = await connectionPromise
+    expect(result.error).toBeDefined()
+    expect(result.error.code).toBe('ENOTFOUND')
+    expect(result.error.message).toMatch(/SSRF Validation Failed|cloud metadata/)
+    expect(result.status).toBeNull()
+  }))
 })

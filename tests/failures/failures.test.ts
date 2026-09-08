@@ -68,6 +68,14 @@ describe('M6.3 — Failure & Resilience Validation', () => {
     upstreamId = ups.id
     createdUpstreamIds.push(upstreamId)
 
+    // Clean up any stale routes and their usage records from previously interrupted test runs
+    await pool.query(
+      `DELETE FROM "UsageHourly" WHERE "routeId" IN (SELECT id FROM "Route" WHERE slug IN ('failure-route', 'dead-route', 'slow-route'))`
+    ).catch(() => {})
+    await pool.query(
+      `DELETE FROM "Route" WHERE slug IN ('failure-route', 'dead-route', 'slow-route')`
+    ).catch(() => {})
+
     const route = await createTestRoute('failure-route', '/api/v1/fail-test', upstreamId)
     routeId = route.id
     createdRouteIds.push(routeId)
@@ -112,6 +120,7 @@ describe('M6.3 — Failure & Resilience Validation', () => {
     clearProxyCache()
 
     if (gatewayServer) {
+      ;(gatewayServer as any).closeAllConnections?.()
       await new Promise<void>((res) => gatewayServer.close(() => res()))
     }
     if (upstream) {
@@ -129,7 +138,7 @@ describe('M6.3 — Failure & Resilience Validation', () => {
     for (const k of redisKeysToClean) {
       await redis.del(k)
     }
-  })
+  }, 30000)
 
   function mockRequestResponse(route: any, limit = 50, quota = 1000) {
     const responseHeaders: Record<string, string> = {}
@@ -367,6 +376,19 @@ describe('M6.3 — Failure & Resilience Validation', () => {
 
     it('4. AWS metadata endpoint is blocked unconditionally', async () => {
       await expect(validateTargetUrl('http://169.254.169.254/latest/meta-data')).rejects.toThrow(/cloud metadata/)
+    })
+
+    it('5. IPv4-mapped IPv6 private addresses are blocked correctly', async () => {
+      process.env.ALLOW_PRIVATE_UPSTREAMS = '0'
+      await expect(validateTargetUrl('http://[::ffff:127.0.0.1]')).rejects.toThrow(/disallowed/)
+      await expect(validateTargetUrl('http://[::ffff:10.0.0.1]')).rejects.toThrow(/disallowed/)
+      await expect(validateTargetUrl('http://[::ffff:172.16.0.1]')).rejects.toThrow(/disallowed/)
+      await expect(validateTargetUrl('http://[::ffff:192.168.1.1]')).rejects.toThrow(/disallowed/)
+      await expect(validateTargetUrl('http://[::ffff:169.254.169.254]')).rejects.toThrow(/disallowed/)
+
+      // A valid public IPv4-mapped IPv6 should be allowed
+      await expect(validateTargetUrl('http://[::ffff:8.8.8.8]')).resolves.toBe(true)
+      process.env.ALLOW_PRIVATE_UPSTREAMS = '1'
     })
   })
 

@@ -13,7 +13,18 @@ const router = express.Router()
 // CORS configuration allowing Next.js Dashboard
 router.use(
   cors({
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: (requestOrigin, callback) => {
+      if (!requestOrigin) return callback(null, true)
+      const allowed = ['http://localhost:3000', 'http://127.0.0.1:3000']
+      if (process.env.DASHBOARD_URL) {
+        allowed.push(process.env.DASHBOARD_URL.replace(/\/$/, ''))
+      }
+      if (allowed.includes(requestOrigin)) {
+        callback(null, true)
+      } else {
+        callback(null, false)
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-actor', 'X-Actor'],
@@ -289,6 +300,14 @@ router.post('/routes', async (req, res) => {
     const upstreamCheck = await pool.query('SELECT id FROM "Upstream" WHERE id=$1', [upstreamId])
     if (upstreamCheck.rowCount === 0) {
       return res.status(404).json({ error: 'Upstream not found' })
+    }
+
+    const dupCheck = await pool.query(
+      'SELECT id FROM "Route" WHERE "pathPrefix" = $1 AND "isActive" = true',
+      [pathPrefix]
+    )
+    if ((dupCheck.rowCount ?? 0) > 0) {
+      return res.status(409).json({ error: 'An active route with this path prefix already exists' })
     }
 
     const q = `

@@ -131,6 +131,17 @@ export default function OrganizationsPage() {
         </div>
       </div>
 
+      {/* Architecture Context Banner */}
+      <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-950/20 flex items-start space-x-3 text-xs text-slate-300">
+        <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <span className="font-semibold text-white">How Tenants & Plans Work in GateForge:</span>
+          <p className="text-slate-400 leading-relaxed">
+            Organizations represent the tenants whose API traffic GateForge controls. Each organization is bound to a <strong className="text-indigo-300">Plan</strong>, which sets their sliding-window rate limit (e.g. 100 req/min) and monthly quota. All API keys issued to an organization automatically inherit that plan's traffic policies.
+          </p>
+        </div>
+      </div>
+
       {/* Plans Matrix Cards */}
       <div className="space-y-4">
         <h2 className="text-base font-semibold text-white flex items-center space-x-2">
@@ -187,27 +198,45 @@ export default function OrganizationsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50">
-              {orgs.map((o) => (
-                <tr key={o.id} className="hover:bg-slate-800/30 transition-colors">
-                  <td className="py-4 pl-2 font-medium text-white">{o.name}</td>
-                  <td className="py-4 font-mono text-xs text-indigo-300">
-                    <span className="px-2.5 py-1 rounded-md bg-indigo-500/10 border border-indigo-500/30">
-                      {o.slug}
-                    </span>
-                  </td>
-                  <td className="py-4 text-xs font-bold text-white">
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                      {o.planName || 'Pro'}
-                    </span>
-                  </td>
-                  <td className="py-4 text-xs font-mono text-slate-400">
-                    {o.rateLimitPerMinute || 100} req/min • {o.quotaPerMonth?.toLocaleString() || 50000}/mo
-                  </td>
-                  <td className="py-4 text-xs text-slate-500 font-mono text-right pr-2">
-                    {new Date(o.createdAt).toLocaleDateString()}
+              {orgs.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center space-y-3">
+                    <Building2 className="w-8 h-8 text-slate-600 mx-auto" />
+                    <div className="text-sm font-semibold text-white">No organizations registered yet</div>
+                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                      Organizations represent the tenants whose traffic GateForge controls. Register your first tenant to start issuing API keys.
+                    </p>
+                    <button
+                      onClick={() => setIsOrgModalOpen(true)}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold"
+                    >
+                      Add First Tenant Org
+                    </button>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                orgs.map((o) => (
+                  <tr key={o.id} className="hover:bg-slate-800/30 transition-colors">
+                    <td className="py-4 pl-2 font-medium text-white">{o.name}</td>
+                    <td className="py-4 font-mono text-xs text-indigo-300">
+                      <span className="px-2.5 py-1 rounded-md bg-indigo-500/10 border border-indigo-500/30">
+                        {o.slug}
+                      </span>
+                    </td>
+                    <td className="py-4 text-xs font-bold text-white">
+                      <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        {o.planName || 'Pro'}
+                      </span>
+                    </td>
+                    <td className="py-4 text-xs font-mono text-slate-400">
+                      {o.rateLimitPerMinute || 100} req/min • {o.quotaPerMonth?.toLocaleString() || 50000}/mo
+                    </td>
+                    <td className="py-4 text-xs text-slate-500 font-mono text-right pr-2">
+                      {new Date(o.createdAt).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -260,10 +289,13 @@ export default function OrganizationsPage() {
                 >
                   {plans.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} ({p.rateLimitPerMinute} req/min)
+                      {p.name} ({p.rateLimitPerMinute} req/min, {p.quotaPerMonth === -1 ? 'Unlimited' : `${p.quotaPerMonth.toLocaleString()} reqs/mo`})
                     </option>
                   ))}
                 </select>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Traffic policy: API keys issued to this organization will inherit this plan's rate limits and monthly quota.
+                </p>
               </div>
 
               <div className="pt-2 flex justify-end space-x-3">

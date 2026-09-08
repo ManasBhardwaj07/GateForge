@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { 
   fetchApiKeys, 
   fetchOrganizations, 
@@ -117,6 +118,17 @@ export default function ApiKeysPage() {
         </button>
       </div>
 
+      {/* Architecture Context Banner */}
+      <div className="p-4 rounded-xl border border-indigo-500/20 bg-indigo-950/20 flex items-start space-x-3 text-xs text-slate-300">
+        <KeyRound className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <span className="font-semibold text-white">How API Keys Work in GateForge:</span>
+          <p className="text-slate-400 leading-relaxed">
+            API keys authenticate client requests and bind them to a specific tenant organization. All requests carrying an active key inherit the sliding-window rate limit (e.g. 100 req/min) and monthly quota configured on that organization's plan. Secrets are hashed with SHA-256 and never stored in plaintext.
+          </p>
+        </div>
+      </div>
+
       {/* API Keys Table */}
       <div className="glass-panel p-6 rounded-2xl space-y-4">
         <div className="overflow-x-auto">
@@ -133,8 +145,32 @@ export default function ApiKeysPage() {
             <tbody className="divide-y divide-slate-800/50">
               {keys.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-500 font-mono text-xs">
-                    No API keys issued yet. Click "Issue New Key" above.
+                  <td colSpan={5} className="py-12 text-center space-y-3">
+                    <KeyRound className="w-8 h-8 text-slate-600 mx-auto" />
+                    <div className="text-sm font-semibold text-white">No API keys issued yet</div>
+                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                      {orgs.length === 0
+                        ? 'API keys connect client requests to a tenant organization. First create an organization before issuing credentials.'
+                        : 'API keys authenticate clients and connect them to an organization\'s traffic policy.'}
+                    </p>
+                    {orgs.length === 0 ? (
+                      <Link
+                        href="/organizations"
+                        className="inline-block px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold"
+                      >
+                        Create Organization First →
+                      </Link>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setGeneratedKey(null)
+                          setIsModalOpen(true)
+                        }}
+                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold"
+                      >
+                        Issue New Key
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -217,6 +253,9 @@ export default function ApiKeysPage() {
                       </option>
                     ))}
                   </select>
+                  <p className="text-[11px] text-slate-400 mt-1.5">
+                    Tenant Policy: This credential will inherit the sliding-window rate limit and monthly quota configured on this organization's plan.
+                  </p>
                 </div>
 
                 <div className="pt-2 flex justify-end space-x-3">

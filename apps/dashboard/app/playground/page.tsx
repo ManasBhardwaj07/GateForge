@@ -130,6 +130,42 @@ export default function PlaygroundPage() {
         </div>
       </div>
 
+      {/* Simulation & Evaluation Guide Banner */}
+      <div className="glass-panel p-4 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-950/30 via-slate-900/60 to-slate-900/40 space-y-2">
+        <div className="flex items-center space-x-2">
+          <Sparkles className="w-4 h-4 text-amber-400" />
+          <span className="text-xs font-mono font-bold text-amber-300 uppercase tracking-wider">
+            Interactive Rate-Limit Evaluation Guide
+          </span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-300 pt-1">
+          <div className="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+            <span className="font-semibold text-emerald-400">1. Send 10 Requests:</span>
+            <p className="text-slate-400 text-[11px] mt-0.5">
+              Standard traffic within quota. All 10 succeed with 200 OK and low upstream latency.
+            </p>
+          </div>
+          <div className="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+            <span className="font-semibold text-amber-400">2. Send 105 Requests:</span>
+            <p className="text-slate-400 text-[11px] mt-0.5">
+              Watch 200 OK turn to 429 Too Many Requests once the tenant rate limit is exhausted!
+            </p>
+          </div>
+          <div className="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+            <span className="font-semibold text-indigo-400">3. Click Decision Inspector:</span>
+            <p className="text-slate-400 text-[11px] mt-0.5">
+              Click any response row to inspect sliding-window headers, tenant ID, and latency breakdowns.
+            </p>
+          </div>
+        </div>
+        <div className="text-[11px] text-slate-500 pt-1 flex items-center space-x-1.5">
+          <Activity className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span>
+            💡 <strong className="text-slate-400">Client Integration:</strong> Browser clients are subject to CORS. Server-to-server clients (cURL, Python, Go, Node.js) call GateForge directly with <code className="text-slate-300 font-mono">X-API-Key</code> without browser CORS involvement.
+          </span>
+        </div>
+      </div>
+
       {/* Control Panel Grid */}
       <div className="glass-panel p-6 rounded-2xl space-y-5">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -206,9 +242,10 @@ export default function PlaygroundPage() {
 
         {/* Burst Presets & Action Button */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2 border-t border-slate-800/80">
-          <div className="flex items-center space-x-2">
-            <span className="text-xs font-mono uppercase text-slate-500 mr-1">Presets:</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-mono uppercase text-slate-500 mr-1">Requests:</span>
             {[
+              { count: 1, label: '1 Req (Single Test)' },
               { count: 10, label: '10 Reqs (Standard)' },
               { count: 50, label: '50 Reqs (High Load)' },
               { count: 105, label: '105 Reqs (Throttle 429 Test)' },
@@ -241,7 +278,7 @@ export default function PlaygroundPage() {
             ) : (
               <>
                 <Play className="w-4 h-4 fill-white" />
-                <span>Launch Burst ({burstCount} Requests)</span>
+                <span>{burstCount === 1 ? 'Send Single Request' : `Launch Burst (${burstCount} Requests)`}</span>
               </>
             )}
           </button>

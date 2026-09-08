@@ -137,6 +137,17 @@ export default function RoutesPage() {
         </div>
       </div>
 
+      {/* Architecture Context Banner */}
+      <div className="p-4 rounded-xl border border-cyan-500/20 bg-cyan-950/20 flex items-start space-x-3 text-xs text-slate-300">
+        <Network className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <span className="font-semibold text-white">How Routes & Upstreams Work in GateForge:</span>
+          <p className="text-slate-400 leading-relaxed">
+            Routes connect public gateway paths (e.g. <code className="text-cyan-300 font-mono">/api/v1/orders</code>) to your internal upstream backend services. Incoming requests are authenticated via <code className="text-slate-300 font-mono">X-API-Key</code>, evaluated against the tenant's rate limit, and proxy-forwarded to the upstream with SSRF protections and timeout controls.
+          </p>
+        </div>
+      </div>
+
       {/* Routes Matrix */}
       <div className="glass-panel p-6 rounded-2xl space-y-4">
         <div className="flex items-center justify-between">
@@ -161,8 +172,26 @@ export default function RoutesPage() {
             <tbody className="divide-y divide-slate-800/50">
               {routes.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-500 font-mono text-xs">
-                    No routes registered yet. Click "Add Route" above.
+                  <td colSpan={5} className="py-12 text-center space-y-3">
+                    <Network className="w-8 h-8 text-slate-600 mx-auto" />
+                    <div className="text-sm font-semibold text-white">No routes configured yet</div>
+                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                      Routes map incoming public paths to internal upstream services. Register an upstream first or add your first route.
+                    </p>
+                    <div className="flex items-center justify-center space-x-3 pt-2">
+                      <button
+                        onClick={() => setIsUpstreamModalOpen(true)}
+                        className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold border border-slate-700"
+                      >
+                        Register Upstream
+                      </button>
+                      <button
+                        onClick={() => setIsRouteModalOpen(true)}
+                        className="px-3.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold"
+                      >
+                        Add Route
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -270,6 +299,9 @@ export default function RoutesPage() {
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 font-mono text-sm text-white focus:border-cyan-500 focus:outline-none"
                   required
                 />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  SSRF Guardrails: GateForge validates upstream targets against SSRF exploits (blocking AWS metadata, private IPv4/IPv6, and dangerous schemes).
+                </p>
               </div>
 
               <div className="pt-2 flex justify-end space-x-3">
@@ -328,6 +360,9 @@ export default function RoutesPage() {
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 font-mono text-sm text-white focus:border-indigo-500 focus:outline-none"
                   required
                 />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Prefix Matching: Incoming client requests matching this prefix will be policy-checked and forwarded to the upstream.
+                </p>
               </div>
 
               <div>

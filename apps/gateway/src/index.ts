@@ -16,7 +16,18 @@ const app = express()
 const PORT = process.env.PORT || 4000
 
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  origin: (requestOrigin, callback) => {
+    if (!requestOrigin) return callback(null, true)
+    const allowed = ['http://localhost:3000', 'http://127.0.0.1:3000']
+    if (process.env.DASHBOARD_URL) {
+      allowed.push(process.env.DASHBOARD_URL.replace(/\/$/, ''))
+    }
+    if (allowed.includes(requestOrigin)) {
+      callback(null, true)
+    } else {
+      callback(null, false)
+    }
+  },
   credentials: true,
   exposedHeaders: ['X-Request-Id', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset', 'X-Quota-Limit', 'X-Quota-Used']
 }))

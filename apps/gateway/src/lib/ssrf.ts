@@ -2,25 +2,40 @@ import dns from 'dns'
 import ipaddr from 'ipaddr.js'
 
 function isCloudMetadata(addr: string): boolean {
-  return addr === '169.254.169.254' || addr === 'fd00:ec2::254'
+  try {
+    let ip = ipaddr.parse(addr)
+    if (ip.kind() === 'ipv6' && (ip as ipaddr.IPv6).isIPv4MappedAddress()) {
+      ip = (ip as ipaddr.IPv6).toIPv4Address()
+    }
+    const normalized = ip.toString()
+    return normalized === '169.254.169.254' || normalized === 'fd00:ec2::254'
+  } catch {
+    return addr === '169.254.169.254' || addr === 'fd00:ec2::254'
+  }
 }
 
 function isPrivateOrMetadata(addr: string): boolean {
   try {
     if (isCloudMetadata(addr)) return true
 
-    const ip = ipaddr.parse(addr)
+    let ip = ipaddr.parse(addr)
+    if (ip.kind() === 'ipv6' && (ip as ipaddr.IPv6).isIPv4MappedAddress()) {
+      ip = (ip as ipaddr.IPv6).toIPv4Address()
+    }
+
     if (ip.kind() === 'ipv4') {
+      const range = ip.range()
       if (
-        ip.range() === 'private' ||
-        ip.range() === 'loopback' ||
-        ip.range() === 'linkLocal' ||
-        ip.range() === 'reserved'
+        range === 'private' ||
+        range === 'loopback' ||
+        range === 'linkLocal' ||
+        range === 'reserved'
       ) {
         return true
       }
     } else if (ip.kind() === 'ipv6') {
-      if (ip.range() === 'loopback' || ip.range() === 'linkLocal' || ip.range() === 'uniqueLocal') {
+      const range = ip.range()
+      if (range === 'loopback' || range === 'linkLocal' || range === 'uniqueLocal') {
         return true
       }
     }
@@ -76,7 +91,7 @@ export async function validateTargetUrl(target: string): Promise<boolean> {
 export function safeLookup(
   hostname: string,
   options: any,
-  callback?: (err: NodeJS.ErrnoException | null, address: any, family: number) => void
+  callback?: (err: NodeJS.ErrnoException | null, address: any, family?: number) => void
 ) {
   let cb = callback
   let opts = options
