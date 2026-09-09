@@ -3,10 +3,14 @@
 > **Programmable Multi-Tenant API Traffic Control System**  
 > High-performance API Gateway Data Plane, Isolated Control Plane, Real-Time Observability Inspector & Interactive Traffic Playground.
 
-[![CI Status](https://github.com/ManasBhardwaj07/GateForge/actions/workflows/ci.yml/badge.svg)](https://github.com/ManasBhardwaj07/GateForge/actions)
-[![Tests Passing](https://img.shields.io/badge/tests-107%2F107%20passing-emerald)](https://github.com/ManasBhardwaj07/GateForge)
-[![TypeScript Strict](https://img.shields.io/badge/TypeScript-Strict%20NodeNext-blue)](https://www.typescriptlang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-gateforgeapp.duckdns.org-0ea5e9?style=for-the-badge&logo=azure&logoColor=white)](https://gateforgeapp.duckdns.org/)
+[![CI Status](https://img.shields.io/badge/CI-Passing-emerald?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/ManasBhardwaj07/GateForge/actions)
+[![Tests Passing](https://img.shields.io/badge/tests-108%2F108%20passing-emerald?style=for-the-badge)](https://github.com/ManasBhardwaj07/GateForge)
+[![TypeScript Strict](https://img.shields.io/badge/TypeScript-Strict%20NodeNext-blue?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)](LICENSE)
+
+> 🚀 **Live Cloud Deployment**: [**https://gateforgeapp.duckdns.org/**](https://gateforgeapp.duckdns.org/)  
+> Fully provisioned on **Microsoft Azure** (Ubuntu Linux VM) featuring automated Let's Encrypt TLS via Caddy 2, single-domain edge routing, Redis 7 atomic sliding-window rate limiting, PostgreSQL 16 persistence, and Docker Compose orchestration.
 
 ---
 
@@ -148,7 +152,8 @@ GateForge/
 | **Relational DB** | PostgreSQL 16 / Prisma | v16 Alpine / v7.6 | Multi-tenant schema, relations & hourly usage rollups |
 | **SSRF Defense** | `ipaddr.js` + Node DNS | v2.2.x | Two-phase private, loopback & cloud metadata filtering |
 | **Web Dashboard**| Next.js 14 / Tailwind | App Router / React 18 | Glassmorphism dashboard & Decision Inspector |
-| **Containerization**| Docker Compose v2 | Official Alpine | 6-service local containerized deployment |
+| **Edge Ingress & TLS** | Caddy 2 / Alpine | v2.8+ Alpine | Auto-renewing Let's Encrypt TLS, single-domain routing & edge security headers |
+| **Containerization**| Docker Compose v2 | Official Alpine | Multi-service stack (6 local / 7 production with Caddy) |
 
 ---
 
@@ -204,9 +209,187 @@ This initializes all 6 services:
 
 ---
 
-## 7. Manual Testing & Verification
+## 7. Azure Cloud Production Deployment
 
-### Test via Terminal (Direct Gateway Data Plane)
+GateForge is deployed live in production on **Microsoft Azure** using an infrastructure topology engineered for zero-trust boundary security, high availability, and deterministic memory efficiency:
+
+> 🌐 **Live Production Edge**: [**https://gateforgeapp.duckdns.org/**](https://gateforgeapp.duckdns.org/)
+
+### 🏗️ Cloud Infrastructure Topology
+
+```
+                                  PUBLIC INTERNET
+                                         │
+                         HTTPS :443 / HTTP :80 (ACME)
+                                         ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ AZURE VIRTUAL MACHINE (Ubuntu 24.04 LTS x64 • Central India • B-Series)      │
+│ Inbound NSG: Port 22 (SSH), Port 80 (HTTP), Port 443 (HTTPS)                │
+│                                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │ CADDY 2 EDGE REVERSE PROXY (Automated TLS via Let's Encrypt / ZeroSSL) │  │
+│  │ Hardened Headers: HSTS, nosniff, DENY frame-options, strict-origin   │  │
+│  └───────────────────┬────────────────────────────────┬──────────────────┘  │
+│                      │                                │                     │
+│       /api/*, /health│                                │ /*                  │
+│                      ▼                                ▼                     │
+│  ┌─────────────────────────────────────┐  ┌──────────────────────────────┐  │
+│  │ GATEFORGE DATA PLANE (:4000)        │  │ NEXT.JS DASHBOARD (:3000)    │  │
+│  │ • SHA-256 Auth & Redis Policy Cache │  │ • App Router UI              │  │
+│  │ • Sliding-Window Rate Limiting      │  │ • Real-Time Metrics          │  │
+│  │ • Longest-Prefix Dynamic Proxy      │  │ • Interactive Playground     │  │
+│  │ • SSRF Protection & IP Pinning      │  │ • Decision Inspector Drawer  │  │
+│  └───────────┬─────────────────┬───────┘  └──────────────┬───────────────┘  │
+│              │                 │                         │                  │
+│              │                 ▼                         │                  │
+│              │   ┌───────────────────────────┐           │                  │
+│              │   │ CONTROL PLANE API (:4001) │◄──────────┘                  │
+│              │   │ • Constant-time Bearer    │ (Strictly internal network;  │
+│              │   │ • Redis Cache Invalidation│  never exposed to Internet)  │
+│              │   └─────────────┬─────────────┘                              │
+│              │                 │                                            │
+│              ▼                 ▼                                            │
+│  ┌───────────────────────┐ ┌─────────────────────────────────────────────┐  │
+│  │ REDIS 7 (In-Memory)   │ │ POSTGRESQL 16 (Relational Multi-Tenant DB)  │  │
+│  │ • Atomic Lua Limiter  │ │ • Tenant Orgs, Plans, Hashed Keys, Routes   │  │
+│  │ • Auth Cache (TTL 5m) │ │ • Transactional Hourly Usage Rollups        │  │
+│  └───────────────────────┘ └─────────────────────────────────────────────┘  │
+│              │                                                              │
+│              ▼ (Isolated Container Network)                                 │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │ UPSTREAM MICROSERVICES: Mock Orders (:5001) & Mock Payments (:5002)   │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 📋 Architectural Highlights & Engineering Decisions
+
+1. **Unified Single-Domain Ingress**:
+   A single domain (`gateforgeapp.duckdns.org`) multiplexes both API traffic and web management without CORS complexities or separate hostnames:
+   - `/api/*` reverse-proxies directly to the **Gateway Data Plane** (`gateway:4000`), passing client connection context (`Host`, `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`).
+   - `/health` routes directly to the gateway health probe for uptime monitoring.
+   - `/*` routes to the **Next.js Observability Dashboard** (`dashboard:3000`).
+
+2. **Zero-Trust Control Plane Isolation**:
+   Administrative mutations (key creation, rate plan changes, upstream routing updates, cache eviction) execute on internal port `:4001`. This port is isolated inside the private Docker bridge network and is **never mapped to external host ports or routed through Caddy**, eliminating unauthorized control plane exposure over the public internet.
+
+3. **Automated TLS Lifecycle (Zero-Config ACME)**:
+   Caddy 2 manages production TLS certificates via Let's Encrypt / ZeroSSL using ACME HTTP-01 challenges, handling automated certificate issuance and seamless renewals without manual intervention or service restarts.
+
+4. **Resource Engineering & Swapfile Safeguards**:
+   Running Next.js 14 production builds (`next build`), PostgreSQL 16, Redis 7, and Node.js microservices on cost-effective cloud instances (e.g., Azure Standard B-Series with 1–2 GiB RAM) requires kernel memory defense. A **2 GiB persistent swapfile** (`fallocate -l 2G /swapfile`) paired with tuned swappiness (`vm.swappiness=10`) was provisioned on Ubuntu to absorb Next.js compiler allocation spikes and prevent Linux kernel Out-Of-Memory (OOM) killer terminations.
+
+5. **Deterministic Multi-Stage Startup**:
+   Production Docker orchestration enforces strict dependency health probes:
+   - PostgreSQL (`pg_isready`) & Redis (`redis-cli ping`) must be healthy before `db-setup` applies Prisma migrations and seeds data.
+   - The `gateway` waits for healthy data stores before binding `:4000`.
+   - `caddy` initiates edge routing only after both `gateway` and `dashboard` report ready.
+
+---
+
+### 🚀 Step-by-Step Azure Deployment Plan
+
+#### Step 1: Provision Azure Virtual Machine
+- **OS**: Ubuntu 24.04 LTS (x64)
+- **Size**: Standard B2ats_v2 / B2s (2 vCPU, 1–2 GiB RAM, Standard SSD)
+- **Region**: Central India (or preferred Azure region)
+- **Network Security Group (NSG)**: Configure inbound security rules:
+  - `Port 22` (SSH management)
+  - `Port 80` (HTTP for ACME challenge & HTTPS redirection)
+  - `Port 443` (HTTPS secure production traffic)
+
+#### Step 2: Configure System Memory & Install Docker
+```bash
+# Update Ubuntu package repositories
+sudo apt-get update && sudo apt-get upgrade -y
+
+# Configure 2 GiB swapfile to prevent OOM during container builds
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+sudo sysctl vm.swappiness=10
+echo 'vm.swappiness=10' | sudo tee -a /etc/sysctl.conf
+
+# Install official Docker CE & Docker Compose Plugin
+sudo apt-get install -y ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo usermod -aG docker $USER
+```
+
+#### Step 3: Domain & DNS Binding
+- Point your domain or dynamic DNS provider (e.g. `gateforgeapp.duckdns.org`) to the Azure VM Public IPv4 address using an `A` record with a 60-second TTL.
+
+#### Step 4: Clone Repository & Configure Environment
+```bash
+git clone https://github.com/ManasBhardwaj07/GateForge.git
+cd GateForge
+
+# Create production environment configuration
+cat << 'EOF' > .env
+NODE_ENV=production
+DOMAIN=gateforgeapp.duckdns.org
+DATABASE_URL=postgresql://gateforge:gateforge_secret@postgres:5432/gateforge?schema=public
+REDIS_URL=redis://redis:6379
+CONTROL_PLANE_TOKEN=gf_admin_production_secret_key_2026
+ALLOW_PRIVATE_UPSTREAMS=1
+PORT=4000
+CONTROL_PORT=4001
+NEXT_PUBLIC_GATEWAY_URL=https://gateforgeapp.duckdns.org/api
+NEXT_PUBLIC_CONTROL_URL=http://gateway:4001
+EOF
+```
+
+#### Step 5: Launch Stack with Caddy Ingress Overlay
+```bash
+# Launch the 7-container production stack
+docker compose -f docker-compose.yml -f deploy/docker-compose.caddy.yml up -d --build
+```
+Verify container status:
+```bash
+docker compose -f docker-compose.yml -f deploy/docker-compose.caddy.yml ps
+```
+All services (`caddy`, `gateway`, `dashboard`, `postgres`, `redis`, `mock-orders`, `mock-payments`) will report `healthy` or `running`.
+
+---
+
+## 8. Live Production & Terminal Verification
+
+### 🌐 Live Production Edge (`https://gateforgeapp.duckdns.org`)
+
+#### 1. Proxied Microservice Dispatch (Live HTTPS)
+```bash
+curl -i -H "X-API-Key: gf_test_123" https://gateforgeapp.duckdns.org/api/v1/orders
+```
+*Returns `HTTP/2 200 OK` via TLS with upstream JSON payload and headers `X-Request-Id`, `X-RateLimit-Remaining: 99`, and `X-Quota-Used: 10`.*
+
+#### 2. Multi-Service Route Resolution (Live HTTPS)
+```bash
+curl -i -H "X-API-Key: gf_test_123" https://gateforgeapp.duckdns.org/api/v1/payments/42
+```
+*Returns `HTTP/2 200 OK` with `{"id":"42","status":"paid"}` dispatched across the internal container bridge to the payments upstream.*
+
+#### 3. Sliding-Window Rate Limit Burst Test
+```bash
+for i in {1..105}; do curl -s -o /dev/null -w "%{http_code}\n" -H "X-API-Key: gf_test_123" https://gateforgeapp.duckdns.org/api/v1/orders; done
+```
+*Emits `200` for requests within the 100 req/min quota, then transitions deterministically to `429 Too Many Requests` as the atomic Redis Lua script locks the window.*
+
+#### 4. Live Gateway Health Probe
+```bash
+curl -i https://gateforgeapp.duckdns.org/health
+```
+*Returns `HTTP/2 200 OK` with `{"status":"ok","uptime":...}`.*
+
+---
+
+### 💻 Local Development Verification (`http://localhost:4000`)
 
 #### 1. Happy Path Proxying
 ```bash
@@ -234,9 +417,9 @@ curl.exe -i -H "X-API-Key: gf_test_123" http://localhost:4000/api/v1/nonexistent
 
 ---
 
-## 8. Automated Test Suite
+## 9. Automated Test Suite
 
-GateForge includes a comprehensive Vitest test suite verifying unit correctness, concurrent burst throughput, SSRF filter evasion, failure resilience, and control plane CRUD:
+GateForge includes an automated Vitest test harness verifying unit correctness, concurrent burst throughput, SSRF filter evasion, upstream credential sanitization, failure resilience, and control plane operations:
 
 ```bash
 # Run all automated tests
@@ -249,8 +432,9 @@ npm run typecheck
 npm run build
 ```
 
-**Test Results**: **107 passing tests** across 11 test suites covering:
+**Test Results**: **108 passing tests** across 11 test suites covering:
 - Unit correctness for all 5 gateway pipeline middlewares
+- Upstream credential sanitization (`X-API-Key` stripped prior to proxy dispatch to prevent credential leakage)
 - Real multi-worker concurrent rate-limiting verification (sliding-window 429 transitions)
 - Two-phase SSRF validation against IPv4/IPv6 private blocks, decimal-encoded IPs, and DNS rebinding
 - Upstream error handling (504 gateway timeout, 500 error propagation)
@@ -258,6 +442,6 @@ npm run build
 
 ---
 
-## 9. License
+## 10. License
 
 GateForge is released under the **MIT License**.
