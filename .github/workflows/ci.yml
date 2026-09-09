@@ -39,7 +39,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gateforge_dev
       REDIS_URL: redis://127.0.0.1:6379
-      ALLOW_PRIVATE_UPSTREAMS: "true"
+      ALLOW_PRIVATE_UPSTREAMS: "1"
       CONTROL_TOKEN: ci_test_control_token_123
       NODE_ENV: test
 

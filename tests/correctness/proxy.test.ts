@@ -156,4 +156,17 @@ describe('M6.1 — Dynamic Proxy Correctness', () => {
     expect(res.status).toBe(504)
     expect(res.data).toEqual({ error: 'gateway timeout' })
   })
+
+  it('9. strips X-API-Key credential before forwarding to upstream', async () => {
+    const res = await request(`${gatewayUrl}/api/v1/orders/security-check`, {
+      method: 'GET',
+      headers: {
+        'X-API-Key': 'gf_test_secret_credential_123',
+      },
+    })
+
+    expect(res.status).toBe(200)
+    expect(upstream.lastRequest?.headers['x-api-key']).toBeUndefined()
+    expect(upstream.lastRequest?.headers['x-forwarded-by']).toBe('gateforge')
+  })
 })

@@ -35,7 +35,10 @@ export function getOrCreateProxy(target: string, timeout = 30000): RequestHandle
       on: {
         proxyReq: (proxyReq: any) => {
           try {
-            if (proxyReq.removeHeader) proxyReq.removeHeader('x-internal')
+            if (proxyReq.removeHeader) {
+              proxyReq.removeHeader('x-internal')
+              proxyReq.removeHeader('x-api-key')
+            }
             if (proxyReq.setHeader) proxyReq.setHeader('x-forwarded-by', 'gateforge')
           } catch (e) {}
         },
