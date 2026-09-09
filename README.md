@@ -1,4 +1,4 @@
-# 🔒 GateForge
+# GateForge
 
 > **Programmable Multi-Tenant API Traffic Control System**  
 > High-performance API Gateway Data Plane, Isolated Control Plane, Real-Time Observability Inspector & Interactive Traffic Playground.
@@ -9,7 +9,7 @@
 [![TypeScript Strict](https://img.shields.io/badge/TypeScript-Strict%20NodeNext-blue?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)](LICENSE)
 
-> 🚀 **Live Cloud Deployment**: [**https://gateforgeapp.duckdns.org/**](https://gateforgeapp.duckdns.org/)  
+> **Live Cloud Deployment**: [**https://gateforgeapp.duckdns.org/**](https://gateforgeapp.duckdns.org/)  
 > Fully provisioned on **Microsoft Azure** (Ubuntu Linux VM) featuring automated Let's Encrypt TLS via Caddy 2, single-domain edge routing, Redis 7 atomic sliding-window rate limiting, PostgreSQL 16 persistence, and Docker Compose orchestration.
 
 ---
@@ -18,19 +18,7 @@
 
 GateForge is a portfolio-scale programmable API traffic-control platform and gateway engineered from first principles. It demonstrates the exact class of distributed systems problems solved by modern API infrastructure (e.g. Kong, Cloudflare, AWS API Gateway): multi-tenant credential hashing, atomic rate-limiting, monthly quota enforcement, SSRF guardrails, dynamic longest-prefix proxy dispatch, and transactional telemetry accounting.
 
-### 🎯 Why This Is a Serious Engineering Project
 
-Most "API Gateway" demos are thin wrappers around an off-the-shelf reverse proxy. GateForge is engineered from the protocol layer up to address real production challenges:
-
-1. **Zero Database Writes on the Hot Path**: High-throughput reverse proxies cannot afford synchronous SQL writes per request. GateForge resolves authenticated API keys and policy limits from Redis in $<1.2\text{ ms}$, while recording request counts into an in-memory lock-free time-bucket aggregator that flushes transactionally to PostgreSQL in asynchronous 5-minute batches.
-2. **Atomic Sliding Window Rate Limiting**: Token-bucket algorithms often permit burst clustering at boundary windows. GateForge executes custom **Redis Lua scripts** (`sliding_window.lua`) that atomically prune expired timestamp entries, count active requests in the current 60-second window, and increment usage in a single atomic roundtrip—guaranteeing zero race conditions under high concurrency.
-3. **Defense-in-Depth SSRF Protection**: Naive gateways allow attackers to proxy into internal infrastructure (`http://169.254.169.254`, `http://localhost:5432`, `http://10.0.0.1`). GateForge enforces two-phase validation:
-   - **Save-Time Resolution**: Hostnames are resolved through DNS and verified against RFC 1918, RFC 3927 link-local, loopback, and cloud metadata ranges using `ipaddr.js`.
-   - **Connection-Time Pinning**: Proxy agent sockets validate the destination IP address prior to dispatch, preventing Time-of-Check to Time-of-Use (TOCTOU) DNS rebinding exploits.
-4. **Instant Cache-Invalidated Key Revocation**: When an administrator revokes an API key via the Control Plane, an atomic `DEL key_auth:<hash>` invalidates the Redis cache immediately, cutting off compromised credentials within sub-milliseconds across the entire cluster.
-5. **Physical Data Plane & Control Plane Separation**: Administrative mutations run on a dedicated internal port (`:4001`) protected by constant-time bearer tokens and strict IP rate limiting, completely isolated from public client traffic hitting port `:4000`.
-
----
 
 ## 2. System Architecture & Request Lifecycle
 
@@ -55,7 +43,7 @@ CLIENT (or Playground) ──►  GATEFORGE DATA PLANE (:4000)  ──►  UPSTR
                                8. Memory-Aggregated Telemetry
 ```
 
-### 🔍 What Happens When a Request Arrives
+### What Happens When a Request Arrives
 
 Every incoming HTTP request traverses a deterministic 5-step evaluation sequence:
 
@@ -69,35 +57,35 @@ Every incoming HTTP request traverses a deterministic 5-step evaluation sequence
 
 ## 3. Platform Visual Tour
 
-### 📊 System Telemetry Overview
+### System Telemetry Overview
 Real-time operational dashboard with live cluster health monitoring, 5/5 setup verification, and request evaluation lifecycle visualization.
 
 ![GateForge System Telemetry Overview](docs/screenshots/overview.png)
 
 ---
 
-### ⚡ Traffic Playground & Decision Inspector
+### Traffic Playground & Decision Inspector
 Interactive traffic simulator allowing operators to test concurrent load bursts, observe real-time `429 Too Many Requests` throttling, and slide open the **Decision Inspector** to examine request headers, tenant resolution, and upstream roundtrip latency.
 
 ![GateForge Traffic Playground](docs/screenshots/traffic-playground.png)
 
 ---
 
-### 🏢 Multi-Tenant Organizations & Plans
+### Multi-Tenant Organizations & Plans
 Configure deterministic rate-limiting tiers (per-minute sliding window) and monthly quota boundaries across multiple isolated tenant organizations.
 
 ![GateForge Tenants and Plans](docs/screenshots/tenants-plans.png)
 
 ---
 
-### 🌐 Dynamic Routes & Upstream Topology
+### Dynamic Routes & Upstream Topology
 Longest-prefix path routing with configurable per-route timeouts and real-time SSRF private IP validation.
 
 ![GateForge Routes and Upstreams](docs/screenshots/routes-upstreams.png)
 
 ---
 
-### 🔑 API Key Management & Lifecycle
+### API Key Management & Lifecycle
 Generate multi-tenant SHA-256 hashed credentials with one-time reveal modals, prefix indexing, and instantaneous revocation with cache invalidation.
 
 ![GateForge API Key Management](docs/screenshots/api-keys.png)
@@ -211,11 +199,11 @@ This initializes all 6 services:
 
 ## 7. Azure Cloud Production Deployment
 
-GateForge is deployed live in production on **Microsoft Azure** using an infrastructure topology engineered for zero-trust boundary security, high availability, and deterministic memory efficiency:
+GateForge is deployed live in production on **Microsoft Azure** using an infrastructure topology engineered for zero-trust boundary security, high availability, and deterministic memory efficiency.
 
-> 🌐 **Live Production Edge**: [**https://gateforgeapp.duckdns.org/**](https://gateforgeapp.duckdns.org/)
+> **Live Production Edge**: [**https://gateforgeapp.duckdns.org/**](https://gateforgeapp.duckdns.org/)
 
-### 🏗️ Cloud Infrastructure Topology
+### Cloud Infrastructure Topology
 
 ```
                                   PUBLIC INTERNET
@@ -262,7 +250,7 @@ GateForge is deployed live in production on **Microsoft Azure** using an infrast
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 📋 Architectural Highlights & Engineering Decisions
+### Architectural Highlights & Engineering Decisions
 
 1. **Unified Single-Domain Ingress**:
    A single domain (`gateforgeapp.duckdns.org`) multiplexes both API traffic and web management without CORS complexities or separate hostnames:
@@ -287,7 +275,7 @@ GateForge is deployed live in production on **Microsoft Azure** using an infrast
 
 ---
 
-### 🚀 Step-by-Step Azure Deployment Plan
+### Step-by-Step Azure Deployment Plan
 
 #### Step 1: Provision Azure Virtual Machine
 - **OS**: Ubuntu 24.04 LTS (x64)
@@ -361,7 +349,7 @@ All services (`caddy`, `gateway`, `dashboard`, `postgres`, `redis`, `mock-orders
 
 ## 8. Live Production & Terminal Verification
 
-### 🌐 Live Production Edge (`https://gateforgeapp.duckdns.org`)
+### Live Production Edge (`https://gateforgeapp.duckdns.org`)
 
 #### 1. Proxied Microservice Dispatch (Live HTTPS)
 ```bash
@@ -389,7 +377,7 @@ curl -i https://gateforgeapp.duckdns.org/health
 
 ---
 
-### 💻 Local Development Verification (`http://localhost:4000`)
+### Local Development Verification (`http://localhost:4000`)
 
 #### 1. Happy Path Proxying
 ```bash

@@ -31,9 +31,10 @@ app.use(requestId)
 app.get('/health', async (_req, res) => {
   try {
     const ping = await redis.ping()
-    res.json({ status: 'ok', redis: ping })
+    await pool.query('SELECT 1')
+    res.json({ status: 'ok', redis: ping, db: 'ok' })
   } catch (err) {
-    res.status(500).json({ status: 'error', error: 'Redis unreachable' })
+    res.status(500).json({ status: 'error', error: 'Database or Redis unreachable' })
   }
 })
 
